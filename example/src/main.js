@@ -12,7 +12,9 @@ createRouter,
 // HTTP
 createHttp, 
 // Lazy
-createLazyContainer, alert, } from '../../framework/src/nexuslite';
+createLazyContainer, 
+// Drag and Drop
+createDragDropContainer, draggable, dropZone, alert, } from '../../framework/src/nexuslite';
 // Initial state with some demo tasks
 const initialState = {
     tasks: [
@@ -52,6 +54,26 @@ function startKanban() {
     // Persist to localStorage on changes
     store.subscribe((state) => {
         localStorage.setItem('nexuslite-kanban-state', JSON.stringify(state));
+        // Setup drag and drop for board view
+        if (state.view === 'board') {
+            setTimeout(() => {
+                const boardEl = document.getElementById('kanban-app');
+                if (boardEl && !boardEl.hasAttribute('data-dnd-init')) {
+                    boardEl.setAttribute('data-dnd-init', 'true');
+                    createDragDropContainer(boardEl, {
+                        onDrop: (taskId, columnId) => {
+                            const currentState = store.getState();
+                            const task = currentState.tasks.find((t) => t.id === taskId);
+                            if (task && task.column !== columnId) {
+                                store.setState({
+                                    tasks: currentState.tasks.map((t) => t.id === taskId ? { ...t, column: columnId } : t),
+                                });
+                            }
+                        },
+                    });
+                }
+            }, 0);
+        }
         if (state.view === 'lazy') {
             setTimeout(() => {
                 const lazyContainerEl = document.getElementById('lazy-container');
@@ -112,8 +134,8 @@ function startKanban() {
                 span(col.title, css({ fontWeight: '600', fontSize: '18px' })),
                 span(String(state.tasks.filter(t => t.column === col.id).length), [cls('column-count')]),
             ]),
-            // Task list
-            div([cls('task-list')], state.tasks.filter(t => t.column === col.id).length === 0
+            // Task list (drop zone)
+            div([cls('task-list'), dropZone(col.id)], state.tasks.filter(t => t.column === col.id).length === 0
                 ? [span('No tasks', css({ color: '#999', fontStyle: 'italic' }))]
                 : state.tasks.filter(t => t.column === col.id).map(task => renderTaskCard(task))),
             // Add button
@@ -139,15 +161,11 @@ function startKanban() {
         return div({
             className: 'task-card',
             'data-task-id': task.id,
+            ...draggable(task.id),
             on: {
                 click: () => {
                     const state = store.getState();
                     store.setState({ selectedTask: task });
-                },
-                // Demonstrate event bubbling prevention
-                customAction: (e) => {
-                    const customEvent = e;
-                    console.log('Custom action:', customEvent.detail);
                 },
             },
             style: {
@@ -156,7 +174,7 @@ function startKanban() {
                 borderRadius: '8px',
                 marginBottom: '10px',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                cursor: 'pointer',
+                cursor: 'grab',
             },
         }, [
             div([task.title], css({ fontWeight: '500', marginBottom: '8px' })),
