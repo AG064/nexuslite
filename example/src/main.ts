@@ -25,7 +25,7 @@ import {
   card, modal, navbar, alert, spinner,
 } from '../../framework/src/nexuslite';
 
-// KANBAN BOARD — Uses ALL NexusLite features
+// KANBAN BOARD - Uses ALL NexusLite features
 
 interface Task {
   id: string;

@@ -1,5 +1,5 @@
 /**
-  NexusLite — Usage Examples
+  NexusLite - Usage Examples
   See how readable and natural the code looks
  */
 // EXAMPLE 1: Simple Landing Page

@@ -59,7 +59,7 @@ this.observer = new IntersectionObserver(
 ```
 
 **Why rootMargin over threshold?**
-- `threshold: 0.1` fires when 10% of the element is visible — too late for smooth scrolling
+- `threshold: 0.1` fires when 10% of the element is visible - too late for smooth scrolling
 - `rootMargin: '100px'` starts rendering 100px before the element enters the viewport
 - User sees content appear seamlessly as they scroll
 
@@ -72,8 +72,8 @@ this.observer = new IntersectionObserver(
 
 ### When NOT to Use
 
-- Small lists (< 50 items) — overhead isn't worth it
-- All items must be visible for context — use pagination instead
+- Small lists (< 50 items) - overhead isn't worth it
+- All items must be visible for context - use pagination instead
 
 ## Virtual DOM Efficiency
 
@@ -87,7 +87,7 @@ This avoids full-page re-rendering and keeps the main thread responsive.
 
 ## Memory Management
 
-- Store uses flat state objects — no deep cloning overhead
+- Store uses flat state objects - no deep cloning overhead
 - Component `destroy()` properly cleans up event listeners and DOM references
 - LazyContainer disconnects observers when destroyed to prevent leaks
 

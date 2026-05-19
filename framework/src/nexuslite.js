@@ -1,14 +1,14 @@
 /**
-  NexusLite — A comfortable frontend framework
+  NexusLite - A comfortable frontend framework
   
   Primary API is designed to be intuitive and readable:
-  - Element functions: div(), h1(), button(), input(), etc.
-  - Attribute helpers: cls(), css(), id(), on(), etc.
-  - Layout helpers: row(), column(), center(), grid()
-  - State: createStore()
-  - Router: createRouter()
-  - HTTP: createHttp()
-  - App: createApp()
+ - Element functions: div(), h1(), button(), input(), etc.
+ - Attribute helpers: cls(), css(), id(), on(), etc.
+ - Layout helpers: row(), column(), center(), grid()
+ - State: createStore()
+ - Router: createRouter()
+ - HTTP: createHttp()
+ - App: createApp()
   
   Everything is vanilla TypeScript, no external frameworks.
  */

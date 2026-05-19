@@ -1,6 +1,6 @@
 # NexusLite
 
-A comfortable frontend framework built from scratch in TypeScript. NexusLite lets you describe user interfaces with JavaScript using an intuitive, readable API — no React, Vue, or Angular required.
+A comfortable frontend framework built from scratch in TypeScript. NexusLite lets you describe user interfaces with JavaScript using an intuitive, readable API - no React, Vue, or Angular required.
 
 ## Quick Start
 
@@ -259,13 +259,13 @@ spinner(32)  // 32px size
 
 NexusLite is built in layers:
 
-1. **Core (`h()`, `createDOM()`)** — Virtual DOM to real DOM
-2. **Convenience functions (`div()`, `h1()`, etc.)** — Readable shorthand
-3. **State (`createStore()`)** — Reactive data with subscriptions
-4. **Router (`createRouter()`)** — Hash-based SPA routing
-5. **HTTP (`createHttp()`)** — Fetch wrapper for API calls
-6. **Lazy (`createLazyContainer()`)** — IntersectionObserver for large lists
-7. **App (`createApp()`)** — Simple reactive application builder
+1. **Core (`h()`, `createDOM()`)** - Virtual DOM to real DOM
+2. **Convenience functions (`div()`, `h1()`, etc.)** - Readable shorthand
+3. **State (`createStore()`)** - Reactive data with subscriptions
+4. **Router (`createRouter()`)** - Hash-based SPA routing
+5. **HTTP (`createHttp()`)** - Fetch wrapper for API calls
+6. **Lazy (`createLazyContainer()`)** - IntersectionObserver for large lists
+7. **App (`createApp()`)** - Simple reactive application builder
 
 ## Requirements Coverage
 
@@ -307,12 +307,12 @@ npm run test:coverage
 ```
 
 **60 tests covering:**
-- `createDOM` — text nodes, elements, attributes, event handlers, styles, children
-- Elements — `div`, `h1-h6`, `button`, `input`, `ul`, `ol`, `li`, `img`, `form`, `label`, `select`, `option`
-- Attribute helpers — `cls`, `css`, `id`, `data`, `on`, `onMulti`, `href`, `ph`, `type`, `name`, `val`, `disabled`, `required`, `autofocus`, `readonly`, `checked`
-- Layout helpers — `row`, `column`, `center`, `grid`, `flex`, `full`
-- Store — `createStore`, `getState`, `setState`, `subscribe`, `unsubscribe`
-- createApp — initial render, re-render on state change, HTMLElement root
+- `createDOM` - text nodes, elements, attributes, event handlers, styles, children
+- Elements - `div`, `h1-h6`, `button`, `input`, `ul`, `ol`, `li`, `img`, `form`, `label`, `select`, `option`
+- Attribute helpers - `cls`, `css`, `id`, `data`, `on`, `onMulti`, `href`, `ph`, `type`, `name`, `val`, `disabled`, `required`, `autofocus`, `readonly`, `checked`
+- Layout helpers - `row`, `column`, `center`, `grid`, `flex`, `full`
+- Store - `createStore`, `getState`, `setState`, `subscribe`, `unsubscribe`
+- createApp - initial render, re-render on state change, HTMLElement root
 
 ## License
 

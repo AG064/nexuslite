@@ -37,7 +37,7 @@ Here is where NexusLite fits into the modern web ecosystem and why it stands out
 ## Repository Structure
 
 - [framework/](framework/) - Core source code, typing schemas, and internal test suites.
-  - [framework/src/nexuslite.ts](framework/src/nexuslite.ts) - The heart of the framework (DOM builder, state store, Client Router, HTTP client, and IntersectionObserver Lazy container).
+ - [framework/src/nexuslite.ts](framework/src/nexuslite.ts) - The heart of the framework (DOM builder, state store, Client Router, HTTP client, and IntersectionObserver Lazy container).
 - [example/](example/) - A complete, real-world Single Page Kanban application utilizing 100% of the developed feature set.
 
 ---
@@ -114,9 +114,9 @@ npm run dev
 Open **`http://localhost:5173/`** to view the application live.
 
 1. **Type safety** catches bugs at compile time, not runtime
-2. **Self-documenting code** — interfaces make the architecture obvious
-3. **Better IDE support** — autocompletion, refactoring tools
-4. **Framework-quality code** — the task is to demonstrate skill, not write quick hacks
+2. **Self-documenting code** - interfaces make the architecture obvious
+3. **Better IDE support** - autocompletion, refactoring tools
+4. **Framework-quality code** - the task is to demonstrate skill, not write quick hacks
 
 ### Why Custom Element trees instead of full Virtual-DOM Diffing?
 
@@ -125,7 +125,7 @@ Our direct re-render model creates standard JS objects to represent nodes and re
 
 ### Why Hash-based Routing?
 
-Server-configured routing (the History API) requires specific backend routing fallback configuration. Hash routing (`#/path`) works instantly on any static host out-of-the-box — the hash is managed entirely on the client, always loading our single SPA bundle seamlessly.
+Server-configured routing (the History API) requires specific backend routing fallback configuration. Hash routing (`#/path`) works instantly on any static host out-of-the-box - the hash is managed entirely on the client, always loading our single SPA bundle seamlessly.
 
 ### Why Event Delegation?
 
