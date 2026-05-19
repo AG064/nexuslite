@@ -1,0 +1,7 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; line-height: 1.5; color: #333; }
+a { color: #0969da; text-decoration: none; }
+button { padding: 10px 20px; background: #0969da; color: white; border: none; border-radius: 6px; cursor: pointer; }
+button:hover { background: #0860ca; }
+input, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
+input:focus, textarea:focus { outline: none; border-color: #0969da; }

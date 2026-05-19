@@ -1,0 +1,25 @@
+{
+  "name": "nexuslite",
+  "version": "1.0.0",
+  "description": "A lightweight frontend framework for building reactive web applications",
+  "main": "dist/nexuslite.js",
+  "types": "dist/nexuslite.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage"
+  },
+  "keywords": ["framework", "frontend", "javascript", "typescript"],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jsdom": "^21.1.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "jsdom": "^24.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^2.0.0"
+  }
+}
