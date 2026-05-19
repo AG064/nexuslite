@@ -12,7 +12,7 @@ createRouter,
 // HTTP
 createHttp, 
 // Lazy
-createLazyContainer, } from '../../framework/src/nexuslite';
+createLazyContainer, alert, } from '../../framework/src/nexuslite';
 // Initial state with some demo tasks
 const initialState = {
     tasks: [
@@ -296,23 +296,29 @@ function startKanban() {
                     ]),
                     div([cls('modal-actions')], [
                         button('Cancel', {
-                            on: { click: () => store.setState({ showModal: false }) },
+                            on: { click: (e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    store.setState({ showModal: false });
+                                } },
                             className: 'btn-secondary',
-                            style: { padding: '10px 20px', border: 'none', borderRadius: '8px', cursor: 'pointer' },
+                            style: { padding: '10px 20px', border: 'none', borderRadius: '8px', cursor: 'pointer', marginRight: '12px' },
                         }),
                         button('Add Task', {
-                            type: 'submit',
                             className: 'btn-primary',
                             style: { padding: '10px 20px', border: 'none', borderRadius: '8px', cursor: 'pointer', background: '#0969da', color: '#fff' },
                             on: {
                                 click: (e) => {
                                     e.preventDefault();
+                                    e.stopPropagation();
                                     const titleInput = document.getElementById('task-title');
                                     const descInput = document.getElementById('task-desc');
                                     const prioritySelect = document.getElementById('task-priority');
                                     const title = titleInput?.value?.trim();
-                                    if (!title)
+                                    if (!title) {
+                                        alert('Please enter a task title');
                                         return;
+                                    }
                                     const newTask = {
                                         id: String(Date.now()),
                                         title,

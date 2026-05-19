@@ -355,22 +355,29 @@ function startKanban() {
           ]),
           div([cls('modal-actions')], [
             button('Cancel', {
-              on: { click: () => store.setState({ showModal: false }) },
+              on: { click: (e: Event) => {
+                e.preventDefault();
+                e.stopPropagation();
+                store.setState({ showModal: false });
+              }},
               className: 'btn-secondary',
-              style: { padding: '10px 20px', border: 'none', borderRadius: '8px', cursor: 'pointer' },
+              style: { padding: '10px 20px', border: 'none', borderRadius: '8px', cursor: 'pointer', marginRight: '12px' },
             }),
             button('Add Task', {
-              type: 'submit',
               className: 'btn-primary',
               style: { padding: '10px 20px', border: 'none', borderRadius: '8px', cursor: 'pointer', background: '#0969da', color: '#fff' },
               on: {
                 click: (e: Event) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   const titleInput = document.getElementById('task-title') as HTMLInputElement;
                   const descInput = document.getElementById('task-desc') as HTMLTextAreaElement;
                   const prioritySelect = document.getElementById('task-priority') as HTMLSelectElement;
                   const title = titleInput?.value?.trim();
-                  if (!title) return;
+                  if (!title) {
+                    alert('Please enter a task title');
+                    return;
+                  }
                   const newTask: Task = {
                     id: String(Date.now()),
                     title,
