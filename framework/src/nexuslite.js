@@ -1,5 +1,5 @@
 /**
-  NexusLite - A comfortable frontend framework
+    NexusLite - A small and comfortable frontend framework
   
   Primary API is designed to be intuitive and readable:
  - Element functions: div(), h1(), button(), input(), etc.
@@ -27,6 +27,7 @@ function isAttrsObject(value) {
     return keys.some((key) => key === 'className' ||
         key === 'style' ||
         key === 'id' ||
+        key === 'draggable' ||
         key === 'on' ||
         key === 'href' ||
         key === 'target' ||
@@ -420,6 +421,101 @@ export class HttpClient {
     patch(endpoint, data) { return this.request(endpoint, { method: 'PATCH', body: data }); }
 }
 export function createHttp(baseURL) { return new HttpClient(baseURL); }
+export class DragDropContainer {
+    constructor(container, options = {}) {
+        this.activeDragId = null;
+        this.enabled = true;
+        this.handleDragStart = (event) => {
+            if (!this.enabled)
+                return;
+            const source = this.resolveElement(event.target, this.options.draggableSelector);
+            if (!source)
+                return;
+            const dragId = source.getAttribute('data-dnd-draggable');
+            if (!dragId)
+                return;
+            this.activeDragId = dragId;
+            const dragEvent = event;
+            if (dragEvent.dataTransfer) {
+                dragEvent.dataTransfer.effectAllowed = 'move';
+                dragEvent.dataTransfer.setData('text/plain', dragId);
+            }
+        };
+        this.handleDragOver = (event) => {
+            if (!this.enabled)
+                return;
+            const dropZone = this.resolveElement(event.target, this.options.dropZoneSelector);
+            if (!dropZone)
+                return;
+            event.preventDefault();
+            const dragEvent = event;
+            if (dragEvent.dataTransfer) {
+                dragEvent.dataTransfer.dropEffect = 'move';
+            }
+        };
+        this.handleDrop = (event) => {
+            if (!this.enabled)
+                return;
+            const dropZone = this.resolveElement(event.target, this.options.dropZoneSelector);
+            if (!dropZone)
+                return;
+            event.preventDefault();
+            const dropZoneId = dropZone.getAttribute('data-dnd-dropzone');
+            const dragEvent = event;
+            const draggedId = this.activeDragId || dragEvent.dataTransfer?.getData('text/plain') || '';
+            if (!draggedId || !dropZoneId)
+                return;
+            this.options.onDrop?.(draggedId, dropZoneId, event);
+            this.activeDragId = null;
+        };
+        this.handleDragEnd = () => {
+            this.activeDragId = null;
+        };
+        const resolvedContainer = typeof container === 'string'
+            ? document.querySelector(container)
+            : container;
+        this.options = {
+            onDrop: options.onDrop,
+            draggableSelector: options.draggableSelector || '[data-dnd-draggable]',
+            dropZoneSelector: options.dropZoneSelector || '[data-dnd-dropzone]',
+        };
+        if (!resolvedContainer) {
+            console.error('NexusLite: DragDrop container not found:', container);
+            this.enabled = false;
+            this.container = document.createElement('div');
+            return;
+        }
+        this.container = resolvedContainer;
+        this.container.addEventListener('dragstart', this.handleDragStart);
+        this.container.addEventListener('dragover', this.handleDragOver);
+        this.container.addEventListener('drop', this.handleDrop);
+        this.container.addEventListener('dragend', this.handleDragEnd);
+    }
+    resolveElement(target, selector) {
+        if (!(target instanceof Element))
+            return null;
+        const match = target.closest(selector);
+        return match instanceof HTMLElement ? match : null;
+    }
+    destroy() {
+        if (!this.enabled)
+            return;
+        this.container.removeEventListener('dragstart', this.handleDragStart);
+        this.container.removeEventListener('dragover', this.handleDragOver);
+        this.container.removeEventListener('drop', this.handleDrop);
+        this.container.removeEventListener('dragend', this.handleDragEnd);
+        this.activeDragId = null;
+    }
+}
+export function createDragDropContainer(container, options) {
+    return new DragDropContainer(container, options);
+}
+export function draggable(id, attrs = {}) {
+    return { ...attrs, draggable: true, 'data-dnd-draggable': id };
+}
+export function dropZone(id, attrs = {}) {
+    return { ...attrs, 'data-dnd-dropzone': id };
+}
 // LAZY
 export class LazyContainer {
     constructor(container) {
@@ -525,6 +621,8 @@ export default {
     createRouter, Router,
     // HTTP
     createHttp, HttpClient,
+    // Drag and Drop
+    createDragDropContainer, DragDropContainer, draggable, dropZone,
     // Lazy
     createLazyContainer, LazyContainer,
     // Patterns

@@ -6,6 +6,7 @@ import {
   disabled, required, autofocus, readonly, checked,
   row, column, center, grid, flex, full,
   createStore, createApp,
+  createDragDropContainer, draggable, dropZone,
 } from './nexuslite';
 
 // SETUP
@@ -259,6 +260,14 @@ describe('Attribute Helpers', () => {
   it('checked creates checked attribute', () => {
     expect(checked()).toEqual({ checked: true });
   });
+
+  it('draggable helper marks elements as draggable', () => {
+    expect(draggable('task-1')).toEqual({ draggable: true, 'data-dnd-draggable': 'task-1' });
+  });
+
+  it('dropZone helper marks drop targets', () => {
+    expect(dropZone('column-a')).toEqual({ 'data-dnd-dropzone': 'column-a' });
+  });
 });
 
 // LAYOUT HELPER TESTS
@@ -426,6 +435,30 @@ describe('createApp', () => {
       render: (s) => div([h1(`${s.count}`)]),
     });
     expect(document.getElementById('app').innerHTML).toContain('0');
+  });
+});
+
+// DRAG AND DROP TESTS
+
+describe('createDragDropContainer', () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div id="board">
+        <div id="item" data-dnd-draggable="task-1" draggable="true">Item</div>
+        <div id="zone" data-dnd-dropzone="column-1">Zone</div>
+      </div>
+    `;
+  });
+
+  it('delegates drag start and drop events by data attributes', () => {
+    const onDrop = vi.fn();
+    createDragDropContainer(document.getElementById('board') as HTMLElement, { onDrop });
+
+    document.getElementById('item')!.dispatchEvent(new Event('dragstart', { bubbles: true, cancelable: true }));
+    document.getElementById('zone')!.dispatchEvent(new Event('dragover', { bubbles: true, cancelable: true }));
+    document.getElementById('zone')!.dispatchEvent(new Event('drop', { bubbles: true, cancelable: true }));
+
+    expect(onDrop).toHaveBeenCalledWith('task-1', 'column-1', expect.any(Event));
   });
 });
 

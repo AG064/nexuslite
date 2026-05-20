@@ -1,6 +1,6 @@
-# Performance Features in Nexus.js
+# Performance Features in NexusLite
 
-Nexus.js includes performance optimizations to handle large-scale applications efficiently.
+NexusLite includes a few small optimizations for larger lists and views.
 
 ## Lazy Rendering with IntersectionObserver
 
@@ -23,7 +23,7 @@ This can freeze the main thread for several seconds on mid-range devices.
 const lazy = createLazyContainer(containerElement);
 lazy.setChildren(
   Array.from({ length: 10000 }, (_, i) =>
-    $('div', { className: 'row' }, `Item ${i}`)
+    div({ className: 'row' }, `Item ${i}`)
   )
 );
 ```
@@ -61,7 +61,7 @@ this.observer = new IntersectionObserver(
 **Why rootMargin over threshold?**
 - `threshold: 0.1` fires when 10% of the element is visible - too late for smooth scrolling
 - `rootMargin: '100px'` starts rendering 100px before the element enters the viewport
-- User sees content appear seamlessly as they scroll
+- Content appears as you scroll
 
 ### When to Use LazyContainer
 
@@ -75,15 +75,15 @@ this.observer = new IntersectionObserver(
 - Small lists (< 50 items) - overhead isn't worth it
 - All items must be visible for context - use pagination instead
 
-## Virtual DOM Efficiency
+## Direct render model
 
-Nexus.js uses a flat virtual DOM tree structure. When state changes:
+NexusLite uses a direct render model instead of a diffing engine. When state changes:
 
-1. New virtual DOM is generated (fast, just object creation)
-2. Diff algorithm compares old vs new tree
-3. Only changed elements get real DOM updates
+1. The framework creates a fresh element tree from the current application state
+2. The root container is cleared and replaced with the new DOM output
+3. Large collections can still stay responsive because `createLazyContainer()` only renders items as they scroll into view
 
-This avoids full-page re-rendering and keeps the main thread responsive.
+This keeps behavior predictable and avoids extra scheduling layers.
 
 ## Memory Management
 

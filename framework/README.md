@@ -1,6 +1,6 @@
 # NexusLite
 
-A comfortable frontend framework built from scratch in TypeScript. NexusLite lets you describe user interfaces with JavaScript using an intuitive, readable API - no React, Vue, or Angular required.
+NexusLite is a small and comfortable frontend framework built in TypeScript. It uses a readable API for building user interfaces without relying on React, Vue, or Angular.
 
 ## Quick Start
 
@@ -218,6 +218,27 @@ lazy.renderAll();
 lazy.destroy();
 ```
 
+### Drag and Drop
+
+For kanban-style interfaces, add drag metadata to items and drop zones, then handle drops from the parent container:
+
+```typescript
+import { createDragDropContainer, draggable, dropZone, div } from 'nexuslite';
+
+const board = document.getElementById('board')!;
+const dragDrop = createDragDropContainer(board, {
+  onDrop: (itemId, zoneId) => moveTask(itemId, zoneId),
+});
+
+const card = div('Task title', draggable('task-1'));
+const column = div([card], dropZone('todo'));
+
+// Later, when unmounting the view:
+dragDrop.destroy();
+```
+
+Use `draggable(id)` on movable cards and `dropZone(id)` on the destination containers. The framework listens on the parent container, so the interaction stays declarative.
+
 ### Common Patterns
 
 ```typescript
@@ -265,7 +286,8 @@ NexusLite is built in layers:
 4. **Router (`createRouter()`)** - Hash-based SPA routing
 5. **HTTP (`createHttp()`)** - Fetch wrapper for API calls
 6. **Lazy (`createLazyContainer()`)** - IntersectionObserver for large lists
-7. **App (`createApp()`)** - Simple reactive application builder
+7. **Drag and Drop (`createDragDropContainer()`)** - Delegated board interactions
+8. **App (`createApp()`)** - Reactive application builder
 
 ## Requirements Coverage
 
@@ -280,6 +302,7 @@ NexusLite is built in layers:
 | Event handling | ✅ `on()`, `onMulti()` |
 | Event delegation | ✅ Bubbling handled |
 | preventDefault/stopPropagation | ✅ Via `e.preventDefault()`, `e.stopPropagation()` |
+| Drag and drop | ✅ `createDragDropContainer()`, `draggable()`, `dropZone()` |
 | HTTP requests | ✅ `createHttp()` |
 | Lazy rendering | ✅ `createLazyContainer()` |
 | Performance documented | ✅ |
@@ -306,13 +329,14 @@ npm run test:ui
 npm run test:coverage
 ```
 
-**60 tests covering:**
+**63 tests covering:**
 - `createDOM` - text nodes, elements, attributes, event handlers, styles, children
 - Elements - `div`, `h1-h6`, `button`, `input`, `ul`, `ol`, `li`, `img`, `form`, `label`, `select`, `option`
-- Attribute helpers - `cls`, `css`, `id`, `data`, `on`, `onMulti`, `href`, `ph`, `type`, `name`, `val`, `disabled`, `required`, `autofocus`, `readonly`, `checked`
+- Attribute helpers - `cls`, `css`, `id`, `data`, `on`, `onMulti`, `href`, `ph`, `type`, `name`, `val`, `disabled`, `required`, `autofocus`, `readonly`, `checked`, `draggable`, `dropZone`
 - Layout helpers - `row`, `column`, `center`, `grid`, `flex`, `full`
 - Store - `createStore`, `getState`, `setState`, `subscribe`, `unsubscribe`
 - createApp - initial render, re-render on state change, HTMLElement root
+- Drag and drop - delegated drop handling through parent container
 
 ## License
 
