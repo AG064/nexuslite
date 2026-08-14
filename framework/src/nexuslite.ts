@@ -229,6 +229,33 @@ export function autofocus() { return { autofocus: true }; }
 export function readonly() { return { readOnly: true }; }
 export function checked() { return { checked: true }; }
 
+/**
+ * Two-way binding helper for inputs. Returns `{ value, on }` that you can
+ * spread into an `input()` attrs object. Reads the current value from the
+ * store, and writes user input back to the same key.
+ *
+ * Example:
+ *   input({ ...inputType('text'), ...bindTo(store, 'name'), placeholder: 'Name' })
+ *
+ * The optional `transform` lets you convert strings to other types:
+ *   bindTo(store, 'count', (v) => Number(v))
+ */
+export function bindTo<T extends Record<string, any>>(
+  store: Store<T>,
+  key: keyof T,
+  transform?: (v: string) => any,
+) {
+  return {
+    value: String(store.get(key) ?? ''),
+    on: {
+      input: (e: Event) => {
+        const v = (e.target as HTMLInputElement).value;
+        store.set(key, (transform ? transform(v) : v) as T[keyof T]);
+      },
+    },
+  };
+}
+
 // LAYOUT HELPERS
 
 export function row(children: any[], gap = 16) {
@@ -993,7 +1020,7 @@ export default {
   br, hr, spacer,
 
   // Attributes
-  cls, css, id, data, on, onMulti, href, ph, type, name, val, disabled, required, autofocus, readonly, checked,
+  cls, css, id, data, on, onMulti, href, ph, type, name, val, disabled, required, autofocus, readonly, checked, bindTo,
 
   // Layout
   row, column, center, grid, flex, full,
