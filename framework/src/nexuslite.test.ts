@@ -194,6 +194,21 @@ describe('Attribute Helpers', () => {
     expect(result.className).toBe('btn btn-primary');
   });
 
+  it('cls filters out falsy values', () => {
+    expect(cls('btn', false && 'btn-primary').className).toBe('btn');
+    expect(cls('a', null, 'b').className).toBe('a b');
+    expect(cls('a', undefined, 'b').className).toBe('a b');
+    expect(cls('a', '', 'b').className).toBe('a b');
+    expect(cls('a', false, null, undefined, 'b').className).toBe('a b');
+  });
+
+  it('cls supports conditional class names with &&', () => {
+    const isActive = true;
+    const isDisabled = false;
+    expect(cls('btn', isActive && 'btn--active', isDisabled && 'btn--disabled').className)
+      .toBe('btn btn--active');
+  });
+
   it('css creates style object', () => {
     const result = css({ color: 'blue', padding: '10px' });
     expect(result.style).toEqual({ color: 'blue', padding: '10px' });

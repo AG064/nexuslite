@@ -205,7 +205,14 @@ export function spacer(size = 16) { return div('', css({ height: size + 'px' }))
 
 // ATTRIBUTE HELPERS
 
-export function cls(...names: string[]) { return { className: names.join(' ') }; }
+/**
+ * Join class names, filtering out falsy values. Lets you write:
+ *   cls('btn', isPrimary && 'btn--primary', isDisabled && 'btn--disabled')
+ * without ending up with "false" or "undefined" in the className string.
+ */
+export function cls(...names: Array<string | false | null | undefined>) {
+  return { className: names.filter(Boolean).join(' ') };
+}
 export function css(styles: Styles) { return { style: styles }; }
 export function id(name: string) { return { id: name }; }
 export function data(key: string, value: string) { return { ['data-' + key]: value }; }
