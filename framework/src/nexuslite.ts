@@ -344,6 +344,132 @@ export function createApp(config: AppConfig) {
   return store;
 }
 
+// SERVER-SIDE RENDERING (string output, no DOM required)
+
+const VOID_ELEMENTS = new Set([
+  'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+  'link', 'meta', 'param', 'source', 'track', 'wbr',
+]);
+
+const BOOLEAN_ATTRS = new Set([
+  'allowfullscreen', 'async', 'autofocus', 'autoplay', 'checked', 'controls',
+  'default', 'defer', 'disabled', 'draggable', 'formnovalidate', 'hidden',
+  'ismap', 'loop', 'multiple', 'muted', 'nomodule', 'novalidate', 'open',
+  'playsinline', 'readonly', 'required', 'reversed', 'selected',
+]);
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function escapeAttr(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function camelToKebab(s: string): string {
+  return s.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+}
+
+function styleObjectToString(style: Record<string, any>): string {
+  return Object.entries(style)
+    .filter(([, v]) => v != null && v !== false)
+    .map(([k, v]) => {
+      const prop = camelToKebab(k);
+      // If value is a number, append 'px' (works for most CSS properties).
+      // Caller can pass a string for unitless or other units.
+      const val = typeof v === 'number' ? String(v) + 'px' : String(v);
+      return `${prop}: ${val}`;
+    })
+    .join('; ');
+}
+
+function renderAttrs(props: Record<string, any>): string {
+  if (!props) return '';
+  const skip = new Set(['children', 'key', 'on']);
+  const parts: string[] = [];
+
+  if (props.className) parts.push(`class="${escapeAttr(String(props.className))}"`);
+  if (props.id) parts.push(`id="${escapeAttr(String(props.id))}"`);
+
+  if (props.style != null) {
+    let styleStr = '';
+    if (typeof props.style === 'string') {
+      styleStr = props.style;
+    } else if (typeof props.style === 'object') {
+      styleStr = styleObjectToString(props.style);
+    }
+    if (styleStr) parts.push(`style="${escapeAttr(styleStr)}"`);
+  }
+
+  for (const [key, val] of Object.entries(props)) {
+    if (skip.has(key)) continue;
+    if (key === 'className' || key === 'id' || key === 'style') continue;
+    if (val == null || val === false) continue;
+
+    if (BOOLEAN_ATTRS.has(key)) {
+      if (val === true || val === '' || val === key) parts.push(key);
+      continue;
+    }
+
+    if (key.startsWith('data-') || key.startsWith('aria-')) {
+      parts.push(`${key}="${escapeAttr(String(val))}"`);
+      continue;
+    }
+
+    // Generic attribute. Skip 'on' (already handled) and other reserved.
+    if (key === 'on') continue;
+    parts.push(`${key}="${escapeAttr(String(val))}"`);
+  }
+
+  return parts.length ? ' ' + parts.join(' ') : '';
+}
+
+/**
+ * Render a NexusLite element (or tree) to an HTML string. Safe to call in
+ * Node without a DOM. Use this for static-site generation (SSG) at build time.
+ *
+ * Mirrors `createDOM()` semantics:
+ * - strings and numbers become text nodes (HTML-escaped)
+ * - arrays become concatenated children
+ * - null/undefined become empty strings
+ * - element objects become `<tag attr="...">children</tag>`
+ * - void elements (img, input, br, etc.) self-close
+ * - className, id, style (object), data-*, aria-*, and boolean attributes
+ *   are rendered; event handlers (`on: { ... }`) are skipped (no listeners
+ *   in static HTML).
+ */
+export function renderToString(element: any): string {
+  if (element === null || element === undefined) return '';
+  if (typeof element === 'boolean') return '';
+  if (typeof element === 'string') return escapeHtml(element);
+  if (typeof element === 'number') return escapeHtml(String(element));
+
+  if (Array.isArray(element)) {
+    let out = '';
+    for (const child of element) out += renderToString(child);
+    return out;
+  }
+
+  if (typeof element !== 'object') return '';
+
+  const { type, props = {}, children = [] } = element;
+  if (typeof type !== 'string' || !type) return '';
+
+  const attrs = renderAttrs(props);
+  const inner = renderToString(children);
+  if (VOID_ELEMENTS.has(type)) {
+    return `<${type}${attrs}>`;
+  }
+  return `<${type}${attrs}>${inner}</${type}>`;
+}
+
 // COMPONENT
 
 export class Component {
@@ -860,7 +986,7 @@ export default {
   row, column, center, grid, flex, full,
 
   // Core
-  h, createDOM,
+  h, createDOM, renderToString,
 
   // App & State
   createApp, createStore, Store, Component,

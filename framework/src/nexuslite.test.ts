@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  h, div, span, p, h1, h2, button, input, createDOM,
+  h, div, span, p, h1, h2, button, input, br, createDOM, renderToString,
   ul, ol, li, img, form, label, select, option,
   cls, css, id, data, on, onMulti, href, ph, type, name, val,
   disabled, required, autofocus, readonly, checked,
@@ -587,5 +587,111 @@ describe('make404Html', () => {
   it('escapes single quotes in scriptPath', () => {
     const html = make404Html({ scriptPath: "/it'path/" });
     expect(html).not.toContain("/it'path/");
+  });
+});
+
+// RENDER TO STRING TESTS
+
+describe('renderToString', () => {
+  it('returns empty string for null and undefined', () => {
+    expect(renderToString(null)).toBe('');
+    expect(renderToString(undefined)).toBe('');
+  });
+
+  it('returns empty string for false and true', () => {
+    expect(renderToString(false)).toBe('');
+    expect(renderToString(true)).toBe('');
+  });
+
+  it('escapes HTML in text', () => {
+    expect(renderToString('<script>alert(1)</script>')).toBe('&lt;script&gt;alert(1)&lt;/script&gt;');
+  });
+
+  it('escapes & in text', () => {
+    expect(renderToString('AT&T')).toBe('AT&amp;T');
+  });
+
+  it('renders numbers as text', () => {
+    expect(renderToString(42)).toBe('42');
+  });
+
+  it('renders a simple element', () => {
+    const html = renderToString(div('hello'));
+    expect(html).toBe('<div>hello</div>');
+  });
+
+  it('renders nested elements', () => {
+    const html = renderToString(div([h1('title'), p('body')]));
+    expect(html).toBe('<div><h1>title</h1><p>body</p></div>');
+  });
+
+  it('renders arrays of elements as siblings', () => {
+    const html = renderToString([div('a'), div('b')]);
+    expect(html).toBe('<div>a</div><div>b</div>');
+  });
+
+  it('renders className and id', () => {
+    const html = renderToString(div('x', { ...cls('foo bar'), ...id('myid') }));
+    expect(html).toContain('class="foo bar"');
+    expect(html).toContain('id="myid"');
+  });
+
+  it('renders style object as kebab-case CSS', () => {
+    const html = renderToString(div('', css({ color: 'red', fontSize: 14, backgroundColor: '#000' })));
+    expect(html).toContain('style="color: red; font-size: 14px; background-color: #000"');
+  });
+
+  it('renders data- and aria- attributes', () => {
+    const html = renderToString(div('', { 'data-user-id': '123', 'aria-label': 'thing' }));
+    expect(html).toContain('data-user-id="123"');
+    expect(html).toContain('aria-label="thing"');
+  });
+
+  it('renders boolean attributes when true', () => {
+    const html = renderToString(input({ ...disabled(), ...required() }));
+    expect(html).toContain('disabled');
+    expect(html).toContain('required');
+  });
+
+  it('omits boolean attributes when false', () => {
+    const html = renderToString(input({ disabled: false }));
+    expect(html).not.toContain('disabled');
+  });
+
+  it('renders void elements without closing tag', () => {
+    const html = renderToString([img('a.png'), br(), input()]);
+    expect(html).toBe('<img src="a.png"><br><input>');
+  });
+
+  it('skips event handlers (no listeners in static HTML)', () => {
+    const handler = () => {};
+    const html = renderToString(button('click me', on('click', handler)));
+    expect(html).toBe('<button>click me</button>');
+    expect(html).not.toContain('onclick');
+    expect(html).not.toContain('on:');
+  });
+
+  it('renders empty element with no children', () => {
+    expect(renderToString(div())).toBe('<div></div>');
+  });
+
+  it('renders deeply nested trees', () => {
+    const tree = div([
+      div([div([div('deep')])]),
+    ]);
+    expect(renderToString(tree)).toBe('<div><div><div><div>deep</div></div></div></div>');
+  });
+
+  it('escapes attribute values', () => {
+    const html = renderToString(div('', { title: 'has "quotes" & <stuff>' }));
+    expect(html).toContain('title="has &quot;quotes&quot; &amp; &lt;stuff&gt;"');
+  });
+
+  it('matches createDOM output for simple cases (round-trip semantics)', () => {
+    const tree = div([h1('Title'), p('Paragraph with <em>emphasis</em>')], cls('container'));
+    const html = renderToString(tree);
+    // Should produce well-formed HTML that matches what createDOM would output.
+    const dom = createDOM(tree);
+    expect(dom.outerHTML.toLowerCase()).toBe(html.toLowerCase());
   });
 });
