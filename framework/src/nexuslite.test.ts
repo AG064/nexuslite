@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   h, div, span, p, h1, h2, button, input, br, createDOM, renderToString,
   ul, ol, li, img, form, label, select, option,
-  cls, css, id, data, on, onMulti, href, ph, type, name, val,
+  cls, css, id, data, on, onMulti, href, ph, type, inputType, name, val,
   disabled, required, autofocus, readonly, checked, bindTo,
   row, column, center, grid, flex, full,
   createStore, createApp,
@@ -207,6 +207,13 @@ describe('Attribute Helpers', () => {
     const isDisabled = false;
     expect(cls('btn', isActive && 'btn--active', isDisabled && 'btn--disabled').className)
       .toBe('btn btn--active');
+  });
+
+  it('inputType is an alias for type', () => {
+    expect(inputType('email')).toEqual({ type: 'email' });
+    expect(inputType('checkbox')).toEqual({ type: 'checkbox' });
+    // The two functions should produce the same output
+    expect(inputType('text')).toEqual(type('text'));
   });
 
   it('bindTo returns value and on handler that sync to a store', () => {
