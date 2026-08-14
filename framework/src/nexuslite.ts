@@ -221,6 +221,13 @@ export function onMulti(events: Record<string, EventHandler>) { return { on: eve
 export function href(url: string, target?: string) { return target ? { href: url, target } : { href: url }; }
 export function ph(text: string) { return { placeholder: text }; }
 export function type(t: string) { return { type: t }; }
+/**
+ * Alias for `type()`. The function name `type` shadows the TypeScript
+ * keyword and looks awkward on import. Use `inputType()` if you prefer:
+ *   import { inputType } from 'nexuslite';
+ *   input({ ...inputType('email'), name: 'email' });
+ */
+export const inputType = type;
 export function name(n: string) { return { name: n }; }
 export function val(v: string | number | boolean) { return { value: v }; }
 export function disabled() { return { disabled: true }; }
@@ -1020,7 +1027,7 @@ export default {
   br, hr, spacer,
 
   // Attributes
-  cls, css, id, data, on, onMulti, href, ph, type, name, val, disabled, required, autofocus, readonly, checked, bindTo,
+  cls, css, id, data, on, onMulti, href, ph, type, inputType, name, val, disabled, required, autofocus, readonly, checked, bindTo,
 
   // Layout
   row, column, center, grid, flex, full,
