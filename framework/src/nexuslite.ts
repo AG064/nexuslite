@@ -205,7 +205,14 @@ export function spacer(size = 16) { return div('', css({ height: size + 'px' }))
 
 // ATTRIBUTE HELPERS
 
-export function cls(...names: string[]) { return { className: names.join(' ') }; }
+/**
+ * Join class names, filtering out falsy values. Lets you write:
+ *   cls('btn', isPrimary && 'btn--primary', isDisabled && 'btn--disabled')
+ * without ending up with "false" or "undefined" in the className string.
+ */
+export function cls(...names: Array<string | false | null | undefined>) {
+  return { className: names.filter(Boolean).join(' ') };
+}
 export function css(styles: Styles) { return { style: styles }; }
 export function id(name: string) { return { id: name }; }
 export function data(key: string, value: string) { return { ['data-' + key]: value }; }
@@ -509,28 +516,28 @@ export class Component {
 
 type Subscriber = (state: any) => void;
 
-export class Store {
-  private state: Record<string, any>;
+export class Store<T extends Record<string, any> = Record<string, any>> {
+  private state: T;
   private subscribers = new Set<Subscriber>();
   private listeners = new Map<string, Set<Subscriber>>();
 
-  constructor(initialState: any = {}) {
+  constructor(initialState: T = {} as T) {
     this.state = { ...initialState };
   }
 
-  getState() { return { ...this.state }; }
-  get<K extends keyof Record<string, any>>(key: K) { return this.state[key]; }
+  getState(): T { return { ...this.state }; }
+  get<K extends keyof T>(key: K): T[K] { return this.state[key]; }
 
-  setState(newState: Record<string, any>) {
+  setState(newState: Partial<T>) {
     const prev = { ...this.state };
     this.state = { ...this.state, ...newState };
-    this._notify(prev, newState);
+    this._notify(prev, newState as Record<string, any>);
   }
 
-  set(key: string, value: any) {
+  set<K extends keyof T>(key: K, value: T[K]) {
     const prev = { ...this.state };
     this.state[key] = value;
-    this._notify(prev, { [key]: value });
+    this._notify(prev, { [key]: value } as Record<string, any>);
   }
 
   subscribe(fn: Subscriber) {
@@ -544,15 +551,17 @@ export class Store {
     return () => this.listeners.get(key)?.delete(fn);
   }
 
-  derive<T>(fn: (state: Record<string, any>) => T) { return fn(this.state); }
+  derive<R>(fn: (state: T) => R): R { return fn(this.state); }
 
-  private _notify(prev: Record<string, any>, changed: Record<string, any>) {
+  private _notify(prev: T, changed: Record<string, any>) {
     this.subscribers.forEach(fn => fn(this.state));
     Object.keys(changed).forEach(key => this.listeners.get(key)?.forEach(fn => fn(this.state)));
   }
 }
 
-export function createStore(initialState?: any) { return new Store(initialState); }
+export function createStore<T extends Record<string, any> = Record<string, any>>(initialState?: T) {
+  return new Store<T>(initialState);
+}
 
 // ROUTER
 
