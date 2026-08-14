@@ -25,11 +25,11 @@
  *   Use path-specific data inside the render function, not in state.
  */
 
-import { renderToString } from './nexuslite';
+import { renderToString } from './nexuslite.js';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join, normalize, sep } from 'node:path';
 
-export type RenderFn = (state: any, path: string) => any;
+export type RenderFn = (state: any, path?: string) => any;
 
 export interface RouteConfig {
   render: RenderFn;
@@ -133,7 +133,7 @@ export async function prerender(config: PrerenderConfig): Promise<string[]> {
 
   // Generate 404.html using the router's make404Html() helper.
   if (notFoundPath) {
-    const { make404Html } = await import('./nexuslite');
+    const { make404Html } = await import('./nexuslite.js');
     const notFoundFile = join(outDir, notFoundPath.replace(/^\/+/, ''));
     await writeFile(notFoundFile, make404Html(), 'utf8');
     written.push(notFoundFile);

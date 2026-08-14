@@ -32,7 +32,11 @@ function isNexusLiteElement(value: any): value is NexusLiteElement {
 }
 
 function isPlainObject(value: any): value is Record<string, any> {
-  return Boolean(value && typeof value === 'object' && !Array.isArray(value) && !isNexusLiteElement(value) && !(value instanceof Node));
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  if (isNexusLiteElement(value)) return false;
+  // `Node` is undefined in pure Node (no DOM). Guard the check.
+  if (typeof Node !== 'undefined' && value instanceof Node) return false;
+  return true;
 }
 
 function isAttrsObject(value: any): boolean {
