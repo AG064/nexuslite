@@ -218,6 +218,37 @@ export function id(name: string) { return { id: name }; }
 export function data(key: string, value: string) { return { ['data-' + key]: value }; }
 export function on(event: string, handler: EventHandler) { return { on: { [event]: handler } }; }
 export function onMulti(events: Record<string, EventHandler>) { return { on: events }; }
+/**
+ * Attach a single event listener to `root` that fires `handler` whenever
+ * the event bubbles up from an element matching `selector`. This is event
+ * delegation — one listener handles many targets. Useful for dynamic lists
+ * (e.g. todo items) where re-attaching listeners on every render would be
+ * expensive.
+ *
+ * Returns a function that detaches the listener when called.
+ *
+ *   const off = delegate(root, 'click', '[data-action]', (e, target) => {
+ *     const action = target.dataset.action;
+ *     if (action === 'delete') deleteItem(target.dataset.id);
+ *   });
+ *   // ...later:
+ *   off();
+ */
+export function delegate<K extends keyof HTMLElementEventMap>(
+  root: HTMLElement | Document | Window,
+  event: K,
+  selector: string,
+  handler: (e: HTMLElementEventMap[K], target: HTMLElement) => void,
+): () => void {
+  const listener = (e: Event) => {
+    const target = (e.target as Element | null)?.closest?.(selector);
+    if (target && (target instanceof HTMLElement) && (root !== document && root !== window || (root as HTMLElement | Document).contains(target))) {
+      handler(e as HTMLElementEventMap[K], target);
+    }
+  };
+  root.addEventListener(event, listener as EventListener);
+  return () => root.removeEventListener(event, listener as EventListener);
+}
 export function href(url: string, target?: string) { return target ? { href: url, target } : { href: url }; }
 export function ph(text: string) { return { placeholder: text }; }
 export function type(t: string) { return { type: t }; }
@@ -1027,7 +1058,7 @@ export default {
   br, hr, spacer,
 
   // Attributes
-  cls, css, id, data, on, onMulti, href, ph, type, inputType, name, val, disabled, required, autofocus, readonly, checked, bindTo,
+  cls, css, id, data, on, onMulti, delegate, href, ph, type, inputType, name, val, disabled, required, autofocus, readonly, checked, bindTo,
 
   // Layout
   row, column, center, grid, flex, full,
