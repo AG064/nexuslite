@@ -6,6 +6,7 @@ import {
   disabled, required, autofocus, readonly, checked,
   row, column, center, grid, flex, full,
   createStore, createApp,
+  createRouter, Router, make404Html,
   createDragDropContainer, draggable, dropZone,
 } from './nexuslite';
 
@@ -470,3 +471,121 @@ const runner = async () => {
 };
 
 export { runner };
+
+// ROUTER TESTS
+
+describe('Router (hash mode, default)', () => {
+  beforeEach(() => {
+    window.location.hash = '';
+  });
+
+  it('defaults to hash mode', () => {
+    const router = createRouter();
+    expect(router.getMode()).toBe('hash');
+  });
+
+  it('matches routes by hash path', () => {
+    const handler = vi.fn();
+    const router = createRouter().route('/about', handler);
+    window.location.hash = '#/about';
+    router.init();
+    expect(handler).toHaveBeenCalledWith({});
+  });
+
+  it('navigate() updates hash', () => {
+    const router = createRouter();
+    router.navigate('/projects');
+    expect(window.location.hash).toBe('#/projects');
+  });
+
+  it('getPath() returns the path without the hash sign', () => {
+    window.location.hash = '#/about';
+    const router = createRouter();
+    expect(router.getPath()).toBe('/about');
+  });
+});
+
+describe('Router (history mode)', () => {
+  beforeEach(() => {
+    // jsdom doesn't implement pushState/replaceState history changes
+    // that re-evaluate window.location.pathname. We stub it.
+    window.history.pushState({}, '', '/');
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: new URL('http://localhost/'),
+    });
+  });
+
+  it('uses history mode when configured', () => {
+    const router = createRouter({ mode: 'history' });
+    expect(router.getMode()).toBe('history');
+  });
+
+  it('navigate() calls pushState with full URL', () => {
+    const router = createRouter({ mode: 'history' });
+    const pushSpy = vi.spyOn(window.history, 'pushState');
+    router.navigate('/about');
+    expect(pushSpy).toHaveBeenCalled();
+    expect(pushSpy.mock.calls[0][2]).toBe('/about');
+  });
+
+  it('navigate() prepends base path', () => {
+    const router = createRouter({ mode: 'history', base: '/app' });
+    const pushSpy = vi.spyOn(window.history, 'pushState');
+    router.navigate('/about');
+    expect(pushSpy.mock.calls[0][2]).toBe('/app/about');
+  });
+
+  it('getPath() returns pathname in history mode', () => {
+    Object.defineProperty(window.location, 'pathname', {
+      writable: true,
+      value: '/about',
+    });
+    const router = createRouter({ mode: 'history' });
+    expect(router.getPath()).toBe('/about');
+  });
+
+  it('getPath() strips the base path', () => {
+    Object.defineProperty(window.location, 'pathname', {
+      writable: true,
+      value: '/app/projects',
+    });
+    const router = createRouter({ mode: 'history', base: '/app' });
+    expect(router.getPath()).toBe('/projects');
+  });
+
+  it('replace() updates history without triggering handler', () => {
+    const handler = vi.fn();
+    const router = createRouter({ mode: 'history' }).route('/', handler);
+    const replaceSpy = vi.spyOn(window.history, 'replaceState');
+    router.replace('/redirected');
+    expect(replaceSpy).toHaveBeenCalled();
+    // handler should not fire from replace() alone
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('init() is idempotent', () => {
+    const router = createRouter({ mode: 'history' });
+    router.init();
+    router.init();
+    // No assertion needed; just shouldn't throw or double-bind.
+  });
+});
+
+describe('make404Html', () => {
+  it('returns valid HTML with a redirect script', () => {
+    const html = make404Html();
+    expect(html).toContain('<!DOCTYPE html>');
+    expect(html).toContain('l.replace');
+  });
+
+  it('uses custom scriptPath when provided', () => {
+    const html = make404Html({ scriptPath: '/app/' });
+    expect(html).toContain("'/app/'");
+  });
+
+  it('escapes single quotes in scriptPath', () => {
+    const html = make404Html({ scriptPath: "/it'path/" });
+    expect(html).not.toContain("/it'path/");
+  });
+});

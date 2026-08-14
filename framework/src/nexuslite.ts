@@ -429,21 +429,98 @@ export function createStore(initialState?: any) { return new Store(initialState)
 type RouteHandler = (params: Record<string, string>) => void;
 type RouteFilter = (path: string) => boolean;
 
+export type RouterMode = 'hash' | 'history';
+
+export interface RouterOptions {
+  /**
+   * Routing mode.
+   * - 'hash' (default): uses window.location.hash, works on any static host.
+   * - 'history': uses the History API. Requires server-side rewrites on most
+   *   hosts, OR a 404.html SPA fallback (use `make404Html()` to generate one).
+   */
+  mode?: RouterMode;
+  /**
+   * Base path prefix. Default '/'.
+   * Useful when the app is mounted under a sub-path (e.g. '/app').
+   * Only used in 'history' mode.
+   */
+  base?: string;
+}
+
 export class Router {
   private routes: { path: string; handler: RouteHandler }[] = [];
   private notFoundHandler?: RouteHandler;
   private beforeEachHandler?: RouteFilter;
+  private mode: RouterMode;
+  private base: string;
+  private initialized = false;
+
+  constructor(options: RouterOptions = {}) {
+    this.mode = options.mode ?? 'hash';
+    // Normalize base: ensure it starts with '/' and has no trailing '/'.
+    const rawBase = options.base ?? '/';
+    this.base = rawBase === '/' ? '/' : rawBase.replace(/\/$/, '');
+    if (!this.base.startsWith('/')) this.base = '/' + this.base;
+  }
 
   init() {
-    window.addEventListener('hashchange', () => this._handle());
+    if (this.initialized) return;
+    this.initialized = true;
+    if (this.mode === 'history') {
+      window.addEventListener('popstate', () => this._handle());
+    } else {
+      window.addEventListener('hashchange', () => this._handle());
+    }
     this._handle();
   }
 
   route(path: string, handler: RouteHandler) { this.routes.push({ path, handler }); return this; }
   beforeEach(fn: RouteFilter) { this.beforeEachHandler = fn; return this; }
   notFound(fn: RouteHandler) { this.notFoundHandler = fn; return this; }
-  navigate(path: string) { window.location.hash = path.startsWith('#') ? path : '#/' + path; }
-  getPath() { return (window.location.hash || '#/').replace('#', '') || '/'; }
+
+  navigate(path: string) {
+    if (this.mode === 'hash') {
+      const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+      window.location.hash = cleanPath.startsWith('#') ? cleanPath : '#/' + cleanPath;
+    } else {
+      const url = this._buildUrl(path);
+      window.history.pushState({}, '', url);
+      this._handle();
+    }
+  }
+
+  getPath(): string {
+    if (this.mode === 'hash') {
+      return (window.location.hash || '#/').replace('#', '') || '/';
+    }
+    let path = window.location.pathname || '/';
+    if (this.base !== '/' && path.startsWith(this.base)) {
+      // strip the base, then re-prepend '/' to keep the leading slash.
+      path = path.slice(this.base.length) || '/';
+      if (!path.startsWith('/')) path = '/' + path;
+    }
+    return path || '/';
+  }
+
+  /** Replace current history entry without triggering handle. Useful for redirects. */
+  replace(path: string) {
+    if (this.mode === 'hash') {
+      const target = path.startsWith('#') ? path : '#/' + path;
+      const url = window.location.href.split('#')[0] + target;
+      window.history.replaceState({}, '', url);
+    } else {
+      window.history.replaceState({}, '', this._buildUrl(path));
+    }
+  }
+
+  getMode(): RouterMode { return this.mode; }
+  getBase(): string { return this.base; }
+
+  private _buildUrl(path: string): string {
+    const cleanPath = path.startsWith('/') ? path : '/' + path;
+    if (this.base === '/') return cleanPath;
+    return this.base.replace(/\/$/, '') + cleanPath;
+  }
 
   private _handle() {
     const path = this.getPath();
@@ -468,7 +545,55 @@ export class Router {
   }
 }
 
-export function createRouter() { return new Router(); }
+export function createRouter(options?: RouterOptions) {
+  return new Router(options);
+}
+
+/**
+ * Generates a 404.html that bounces any unknown URL into the SPA shell with
+ * the original path preserved as a query string. Use this when deploying a
+ * 'history' mode app to a static host that doesn't support rewrites
+ * (e.g. GitHub Pages).
+ *
+ * Pair with router setup that reads `?p=` on load and navigates accordingly.
+ *
+ * Example: in app.ts, before router.init(), do:
+ *   const p = new URLSearchParams(location.search).get('p');
+ *   if (p) { router.replace(p); history.replaceState({}, '', location.pathname); }
+ */
+export function make404Html(opts: { scriptPath?: string } = {}): string {
+  const script = opts.scriptPath ?? '/';
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>404</title>
+  <script>
+    // Single-page app fallback for static hosts (e.g. GitHub Pages).
+    // Bounce the requested path into the SPA shell.
+    (function () {
+      var l = window.location;
+      var segments = l.pathname.split('/').filter(Boolean);
+      // Don't bounce for actual asset paths (have a file extension).
+      var last = segments[segments.length - 1] || '';
+      if (last.indexOf('.') !== -1) {
+        l.replace(l.pathname + l.search);
+        return;
+      }
+      var path = '/' + segments.join('/');
+      var query = l.search ? l.search + '&p=' + encodeURIComponent(path) : '?p=' + encodeURIComponent(path);
+      l.replace('${scriptPathEscape(script)}' + query);
+    })();
+  </script>
+</head>
+<body></body>
+</html>
+`;
+}
+
+function scriptPathEscape(p: string): string {
+  return p.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
 
 // HTTP
 
@@ -741,7 +866,7 @@ export default {
   createApp, createStore, Store, Component,
 
   // Router
-  createRouter, Router,
+  createRouter, Router, make404Html,
 
   // HTTP
   createHttp, HttpClient,
