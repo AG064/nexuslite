@@ -1,9 +1,21 @@
 {
   "name": "nexuslite",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A lightweight frontend framework for building reactive web applications",
   "main": "dist/nexuslite.js",
   "types": "dist/nexuslite.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/nexuslite.d.ts",
+      "import": "./dist/nexuslite.js",
+      "require": "./dist/nexuslite.js"
+    },
+    "./prerender": {
+      "types": "./dist/prerender.d.ts",
+      "import": "./dist/prerender.js",
+      "require": "./dist/prerender.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -17,7 +29,9 @@
     "framework",
     "frontend",
     "javascript",
-    "typescript"
+    "typescript",
+    "ssg",
+    "prerender"
   ],
   "license": "MIT",
   "devDependencies": {
