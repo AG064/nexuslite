@@ -3,7 +3,7 @@ import {
   h, div, span, p, h1, h2, button, input, br, createDOM, renderToString,
   ul, ol, li, img, form, label, select, option,
   cls, css, id, data, on, onMulti, href, ph, type, name, val,
-  disabled, required, autofocus, readonly, checked,
+  disabled, required, autofocus, readonly, checked, bindTo,
   row, column, center, grid, flex, full,
   createStore, createApp,
   createRouter, Router, make404Html,
@@ -192,6 +192,54 @@ describe('Attribute Helpers', () => {
   it('cls joins class names', () => {
     const result = cls('btn', 'btn-primary');
     expect(result.className).toBe('btn btn-primary');
+  });
+
+  it('cls filters out falsy values', () => {
+    expect(cls('btn', false && 'btn-primary').className).toBe('btn');
+    expect(cls('a', null, 'b').className).toBe('a b');
+    expect(cls('a', undefined, 'b').className).toBe('a b');
+    expect(cls('a', '', 'b').className).toBe('a b');
+    expect(cls('a', false, null, undefined, 'b').className).toBe('a b');
+  });
+
+  it('cls supports conditional class names with &&', () => {
+    const isActive = true;
+    const isDisabled = false;
+    expect(cls('btn', isActive && 'btn--active', isDisabled && 'btn--disabled').className)
+      .toBe('btn btn--active');
+  });
+
+  it('bindTo returns value and on handler that sync to a store', () => {
+    const store = createStore<{ name: string }>({ name: 'Alice' });
+    const binding = bindTo(store, 'name');
+    expect(binding.value).toBe('Alice');
+    expect(binding.on).toBeDefined();
+    expect(typeof binding.on.input).toBe('function');
+
+    // Simulate user typing
+    const fakeEvent = { target: { value: 'Bob' } } as unknown as Event;
+    binding.on.input(fakeEvent);
+    expect(store.get('name')).toBe('Bob');
+
+    // In a render function, bindTo() is called again to get the fresh value
+    const refreshed = bindTo(store, 'name');
+    expect(refreshed.value).toBe('Bob');
+  });
+
+  it('bindTo with transform converts the value', () => {
+    const store = createStore<{ count: number }>({ count: 0 });
+    const binding = bindTo(store, 'count', (v) => Number(v));
+    expect(binding.value).toBe('0');
+
+    const fakeEvent = { target: { value: '42' } } as unknown as Event;
+    binding.on.input(fakeEvent);
+    expect(store.get('count')).toBe(42);
+  });
+
+  it('bindTo handles null/undefined initial values', () => {
+    const store = createStore<{ name: string | null }>({ name: null });
+    const binding = bindTo(store, 'name');
+    expect(binding.value).toBe('');
   });
 
   it('css creates style object', () => {
@@ -384,6 +432,47 @@ describe('createStore', () => {
     store.setState({ count: 1 });
     expect(l1).toHaveBeenCalledTimes(1);
     expect(l2).toHaveBeenCalledTimes(1);
+  });
+});
+
+// TYPED STORE (generic)
+
+interface CounterState { count: number; step: number; label: string; }
+
+describe('createStore (generic)', () => {
+  it('preserves the type parameter on getState', () => {
+    const store = createStore<CounterState>({ count: 0, step: 1, label: 'clicks' });
+    const state: CounterState = store.getState();
+    expect(state.count).toBe(0);
+    expect(state.step).toBe(1);
+    expect(state.label).toBe('clicks');
+  });
+
+  it('preserves the type parameter on get', () => {
+    const store = createStore<CounterState>({ count: 5, step: 2, label: 'x' });
+    const count: number = store.get('count');
+    const label: string = store.get('label');
+    expect(count).toBe(5);
+    expect(label).toBe('x');
+  });
+
+  it('accepts partial state in setState', () => {
+    const store = createStore<CounterState>({ count: 0, step: 1, label: 'clicks' });
+    store.setState({ count: 5 });
+    expect(store.getState()).toEqual({ count: 5, step: 1, label: 'clicks' });
+  });
+
+  it('accepts typed values in set', () => {
+    const store = createStore<CounterState>({ count: 0, step: 1, label: 'clicks' });
+    store.set('count', 10);
+    store.set('label', 'updated');
+    expect(store.getState()).toEqual({ count: 10, step: 1, label: 'updated' });
+  });
+
+  it('works without an explicit type parameter (defaults to Record<string, any>)', () => {
+    const store = createStore({ x: 1 });
+    store.setState({ y: 2 });
+    expect(store.getState()).toEqual({ x: 1, y: 2 });
   });
 });
 
