@@ -1,20 +1,35 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-  h, div, span, p, h1, h2, button, input, br, createDOM, renderToString,
-  ul, ol, li, img, form, label, select, option,
+  h, div, span, p, h1, h2, h3, button, input, br, createDOM, renderToString,
+  ul, ol, li, img, form, label, select, option, main, mainEl,
   cls, css, id, data, on, onMulti, delegate, href, ph, type, inputType, name, val,
   disabled, required, autofocus, readonly, checked, bindTo,
   row, column, center, grid, flex, full,
-  createStore, createApp,
+  createStore, createApp, Component, Store, mount,
   createRouter, Router, make404Html,
   createHttp, HttpClient, HttpError,
   createDragDropContainer, draggable, dropZone,
+  createLazyContainer, LazyContainer,
+  card, modal, navbar, alert, spinner,
 } from './nexuslite';
 
 // SETUP
 
 beforeEach(() => {
   document.body.innerHTML = '';
+  // jsdom doesn't ship IntersectionObserver. Stub it for the LazyContainer tests.
+  if (typeof (globalThis as any).IntersectionObserver === 'undefined') {
+    class StubIntersectionObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+      takeRecords() { return []; }
+      root = null;
+      rootMargin = '';
+      thresholds = [];
+    }
+    (globalThis as any).IntersectionObserver = StubIntersectionObserver;
+  }
 });
 
 // CREATE DOM TESTS
@@ -922,5 +937,291 @@ describe('renderToString', () => {
     // Should produce well-formed HTML that matches what createDOM would output.
     const dom = createDOM(tree);
     expect(dom.outerHTML.toLowerCase()).toBe(html.toLowerCase());
+  });
+});
+
+
+// COMPONENT
+
+describe('Component', () => {
+  beforeEach(() => { document.body.innerHTML = '<div id="c"></div>'; });
+
+  it('mounts into a container and renders the initial state', () => {
+    const c = new Component({ state: { x: 1 }, render: (s: any) => div(`x=${s.x}`) });
+    const el = c.mount(document.getElementById('c')!);
+    expect(el.innerHTML).toBe('<div>x=1</div>');
+  });
+
+  it('setState re-renders the container', () => {
+    const c = new Component({ state: { x: 1 }, render: (s: any) => div(`x=${s.x}`) });
+    c.mount(document.getElementById('c')!);
+    c.setState({ x: 2 });
+    expect(document.getElementById('c')!.innerHTML).toBe('<div>x=2</div>');
+  });
+
+  it('calls onMount after the first mount', () => {
+    const onMount = vi.fn();
+    new Component({ state: {}, render: () => div('x'), onMount }).mount(document.getElementById('c')!);
+    expect(onMount).toHaveBeenCalledTimes(1);
+  });
+
+  it('getState returns a copy, not the internal state', () => {
+    const c = new Component({ state: { x: 1 }, render: (s: any) => div(String(s.x)) });
+    const a = c.getState();
+    a.x = 999;
+    expect(c.getState().x).toBe(1);
+  });
+});
+
+// LAYOUT HELPERS
+
+describe('Layout Helpers', () => {
+  it('row creates a flex row with gap', () => {
+    const node = createDOM(row([div('a'), div('b')], 12));
+    expect((node as HTMLElement).style.display).toBe('flex');
+    expect((node as HTMLElement).style.gap).toBe('12px');
+  });
+
+  it('column creates a flex column with gap', () => {
+    const node = createDOM(column([div('a')], 8));
+    expect((node as HTMLElement).style.flexDirection).toBe('column');
+    expect((node as HTMLElement).style.gap).toBe('8px');
+  });
+
+  it('center wraps content with max-width and centering', () => {
+    const node = createDOM(center([div('x')], 800));
+    expect((node as HTMLElement).style.maxWidth).toBe('800px');
+    expect((node as HTMLElement).style.margin).toBe('0px auto');
+  });
+
+  it('grid creates a CSS grid with the given column count', () => {
+    const node = createDOM(grid([div('a'), div('b'), div('c')], 4, 20));
+    expect((node as HTMLElement).style.display).toBe('grid');
+    expect((node as HTMLElement).style.gridTemplateColumns).toBe('repeat(4, 1fr)');
+    expect((node as HTMLElement).style.gap).toBe('20px');
+  });
+
+  it('flex accepts direction and align options', () => {
+    const node = createDOM(flex([div('a')], 'column', 4, 'center'));
+    expect((node as HTMLElement).style.flexDirection).toBe('column');
+    expect((node as HTMLElement).style.gap).toBe('4px');
+    expect((node as HTMLElement).style.alignItems).toBe('center');
+  });
+
+  it('full wraps content in a 100% width/height box', () => {
+    const node = createDOM(full(div('x')));
+    expect((node as HTMLElement).style.width).toBe('100%');
+    expect((node as HTMLElement).style.height).toBe('100%');
+  });
+});
+
+// PATTERNS
+
+describe('Patterns', () => {
+  it('card renders title, body, and optional actions', () => {
+    const node = createDOM(card('Title', 'body text', [{ label: 'OK', onClick: () => {} }]));
+    const html = (node as HTMLElement).outerHTML;
+    expect(html).toContain('Title');
+    expect(html).toContain('body text');
+    expect(html).toContain('OK');
+    expect(html).toContain('card-actions');
+  });
+
+  it('card without actions omits the actions container', () => {
+    const node = createDOM(card('Title', 'body'));
+    const html = (node as HTMLElement).outerHTML;
+    expect(html).not.toContain('card-actions');
+  });
+
+  it('modal renders title and content with overlay', () => {
+    const node = createDOM(modal('Hello', [p('world')]));
+    expect(node.classList.contains('modal-overlay')).toBe(true);
+    expect((node as HTMLElement).outerHTML).toContain('Hello');
+    expect((node as HTMLElement).outerHTML).toContain('world');
+  });
+
+  it('modal with onClose calls it when the overlay is clicked', () => {
+    const onClose = vi.fn();
+    const node = createDOM(modal('X', [], onClose)) as HTMLElement;
+    document.body.appendChild(node);
+    node.dispatchEvent(new Event('click', { bubbles: true }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    document.body.removeChild(node);
+  });
+
+  it('navbar renders brand and nav links', () => {
+    const node = createDOM(navbar('Brand', [{ label: 'Home', href: '/' }, { label: 'About', href: '/about' }]));
+    expect((node as HTMLElement).outerHTML).toContain('Brand');
+    expect((node as HTMLElement).outerHTML).toContain('Home');
+    expect((node as HTMLElement).outerHTML).toContain('/about');
+  });
+
+  it('alert picks a color per type', () => {
+    const success = createDOM(alert('Saved', 'success')) as HTMLElement;
+    expect(success.style.backgroundColor).toBe('rgb(212, 237, 218)');
+    const error = createDOM(alert('Boom', 'error')) as HTMLElement;
+    expect(error.style.backgroundColor).toBe('rgb(248, 215, 218)');
+  });
+
+  it('spinner injects the nx-spin keyframe and renders the element', () => {
+    document.head.innerHTML = '';
+    const node = createDOM(spinner(32)) as HTMLElement;
+    expect(node.classList.contains('nx-spinner')).toBe(true);
+    expect(node.style.width).toBe('32px');
+    expect(node.style.height).toBe('32px');
+    const injected = document.head.querySelector('style[data-nx-spinner]');
+    expect(injected).toBeTruthy();
+    expect(injected!.textContent).toContain('@keyframes nx-spin');
+  });
+
+  it('spinner only injects the keyframe once across multiple calls', () => {
+    // The first test already triggered an injection; verify subsequent
+    // calls do not add more <style> tags to <head>.
+    const before = document.head.querySelectorAll('style[data-nx-spinner]').length;
+    spinner(24);
+    spinner(24);
+    spinner(24);
+    const after = document.head.querySelectorAll('style[data-nx-spinner]').length;
+    expect(after).toBe(before);
+  });
+});
+
+// LAZY CONTAINER
+
+describe('createLazyContainer', () => {
+  let container: HTMLElement;
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="lazy"></div>';
+    container = document.getElementById('lazy')!;
+  });
+
+  it('renders placeholders for setChildren', () => {
+    const lc = createLazyContainer(container);
+    lc.setChildren([h('p', {}, 'a'), h('p', {}, 'b'), h('p', {}, 'c')]);
+    expect(container.children.length).toBe(3);
+    expect(container.querySelectorAll('[data-index]').length).toBe(3);
+  });
+
+  it('renderAll mounts every child immediately', () => {
+    const lc = createLazyContainer(container);
+    lc.setChildren([h('p', {}, 'a'), h('p', {}, 'b')]);
+    lc.renderAll();
+    expect(container.querySelectorAll('p').length).toBe(2);
+    expect(container.querySelectorAll('[data-index]').length).toBe(0);
+  });
+
+  it('destroy disconnects the observer', () => {
+    const lc = createLazyContainer(container);
+    const disconnect = vi.spyOn(IntersectionObserver.prototype, 'disconnect');
+    lc.destroy();
+    expect(disconnect).toHaveBeenCalled();
+  });
+});
+
+// DELEGATE EDGE CASES
+
+describe('delegate (edge cases)', () => {
+  it('handles clicks on deeply nested children that match the selector', () => {
+    document.body.innerHTML = '<div id="root"><div data-x="outer"><div data-x="inner"><span>click me</span></div></div></div>';
+    const root = document.getElementById('root')!;
+    const handler = vi.fn();
+    delegate(root, 'click', '[data-x]', (_, target) => handler((target as HTMLElement).dataset.x));
+    root.querySelector('span')!.dispatchEvent(new Event('click', { bubbles: true }));
+    expect(handler).toHaveBeenCalledWith('inner');
+  });
+
+  it('does not fire if the closest match is outside the root', () => {
+    document.body.innerHTML = '<div id="root"></div><button data-x>outside</button>';
+    const root = document.getElementById('root')!;
+    const handler = vi.fn();
+    delegate(root, 'click', '[data-x]', () => handler());
+    document.querySelector('[data-x]')!.dispatchEvent(new Event('click', { bubbles: true }));
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('fires for events on document (no need for root.contains check)', () => {
+    document.body.innerHTML = '<button data-x>global</button>';
+    const handler = vi.fn();
+    const off = delegate(document, 'click', '[data-x]', () => handler());
+    document.querySelector('[data-x]')!.dispatchEvent(new Event('click', { bubbles: true }));
+    expect(handler).toHaveBeenCalledTimes(1);
+    off();
+  });
+});
+
+// HTTP ERROR TYPE
+
+describe('HttpError', () => {
+  it('is a class with status and data', () => {
+    const err = new HttpError('not found', 404, { error: 'no' });
+    expect(err).toBeInstanceOf(Error);
+    expect(err).toBeInstanceOf(HttpError);
+    expect(err.name).toBe('HttpError');
+    expect(err.status).toBe(404);
+    expect(err.data).toEqual({ error: 'no' });
+    expect(err.message).toBe('not found');
+  });
+});
+
+// ALIASES AND STYLE EDGE CASES
+
+describe('mainEl and string styles', () => {
+  it('mainEl is an alias for main()', () => {
+    const a = createDOM(main([p('x')])) as HTMLElement;
+    const b = createDOM(mainEl([p('x')])) as HTMLElement;
+    expect(a.outerHTML).toBe(b.outerHTML);
+    expect(b.tagName).toBe('MAIN');
+  });
+
+  it('createDOM applies string styles via setAttribute', () => {
+    const node = createDOM(div('x', { style: 'color: red; padding: 10px' }));
+    expect((node as HTMLElement).getAttribute('style')).toBe('color: red; padding: 10px');
+  });
+
+  it('createDOM applies object styles directly (no automatic px conversion)', () => {
+    // Unlike renderToString, the live createDOM does not convert numbers to
+    // px — that's the renderer's job. Pass a string for px-aware styles.
+    const node = createDOM(div('x', { style: { color: 'red' } }));
+    expect((node as HTMLElement).style.color).toBe('red');
+  });
+});
+
+// MOUNT
+
+describe('mount', () => {
+  beforeEach(() => { document.body.innerHTML = '<div id="m"></div>'; });
+
+  it('renders a tree into a container and returns the node', () => {
+    const container = document.getElementById('m')!;
+    const node = mount(div('hello', cls('greet')), container);
+    expect(container.innerHTML).toBe('<div class="greet">hello</div>');
+    expect((node as HTMLElement).tagName).toBe('DIV');
+  });
+
+  it('replaces existing content in the container', () => {
+    const container = document.getElementById('m')!;
+    container.innerHTML = '<p>old</p>';
+    mount(div('new'), container);
+    expect(container.innerHTML).toBe('<div>new</div>');
+  });
+
+  it('returns an empty DocumentFragment for an empty array', () => {
+    const container = document.getElementById('m')!;
+    const node = mount([], container);
+    expect(node).toBeInstanceOf(DocumentFragment);
+    expect(container.innerHTML).toBe('');
+  });
+
+  it('mount can be used as a store.subscribe callback', () => {
+    const store = createStore({ msg: 'one' });
+    const container = document.getElementById('m')!;
+    store.subscribe(() => mount(div(store.getState().msg), container));
+    // first render happens because we subscribed AFTER the current state
+    // — to trigger an update, call setState
+    expect(container.innerHTML).toBe('');  // nothing yet
+    store.setState({ msg: 'two' });
+    expect(container.innerHTML).toBe('<div>two</div>');
+    store.setState({ msg: 'three' });
+    expect(container.innerHTML).toBe('<div>three</div>');
   });
 });

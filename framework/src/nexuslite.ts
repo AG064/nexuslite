@@ -188,6 +188,11 @@ export function nav(children?: any, attrs?: any) { return el('nav', children, at
 export function header(children?: any, attrs?: any) { return el('header', children, attrs); }
 export function footer(children?: any, attrs?: any) { return el('footer', children, attrs); }
 export function main(children?: any, attrs?: any) { return el('main', children, attrs); }
+/** Alias for `main()`. The name `main` is a common variable name, so
+ *  some prefer this clearer form:
+ *    import { mainEl } from 'nexuslite';
+ *    mainEl([...]) */
+export const mainEl = main;
 export function section(children?: any, attrs?: any) { return el('section', children, attrs); }
 export function article(children?: any, attrs?: any) { return el('article', children, attrs); }
 export function aside(children?: any, attrs?: any) { return el('aside', children, attrs); }
@@ -347,10 +352,14 @@ export function createDOM(element: any): Node {
   if (props.className) el.className = props.className;
   if (props.id) el.id = props.id;
 
-  if (props.style) {
-    Object.entries(props.style).forEach(([key, val]) => {
-      (el.style as any)[key] = val;
-    });
+  if (props.style != null) {
+    if (typeof props.style === 'string') {
+      el.setAttribute('style', props.style);
+    } else {
+      Object.entries(props.style).forEach(([key, val]) => {
+        (el.style as any)[key] = val;
+      });
+    }
   }
 
   if (props.on) {
@@ -418,6 +427,25 @@ export function createApp(config: AppConfig) {
   render(store.getState());
   
   return store;
+}
+
+/**
+ * Render a NexusLite element tree into a DOM container. Replaces the
+ * container's existing content. Returns the mounted root node, or null
+ * if the tree was empty.
+ *
+ * This is the lower-level helper `createApp()` uses internally. Use it
+ * directly when you don't need a store subscription — for example, in
+ * a one-shot render from a manually-managed state, or when you're
+ * subscribing to a store yourself via `store.subscribe(mount)`.
+ *
+ *   const root = mount(home(), document.getElementById('app')!);
+ */
+export function mount(element: any, container: HTMLElement): Node | null {
+  container.innerHTML = '';
+  const node = createDOM(element);
+  if (node) container.appendChild(node);
+  return node;
 }
 
 // SERVER-SIDE RENDERING (string output, no DOM required)
@@ -548,18 +576,38 @@ export function renderToString(element: any): string {
 
 // COMPONENT
 
+/**
+ * A self-contained UI component with its own local state. Useful for
+ * sub-components that don't share state with the global app store.
+ *
+ * For app-level state, prefer `createApp()` with a `createStore()`.
+ *
+ *   const counter = new Component({
+ *     state: { count: 0 },
+ *     render: (s) => div([
+ *       h1(`Count: ${s.count}`),
+ *       button('+', on('click', () => counter.setState({ count: s.count + 1 }))),
+ *     ]),
+ *   });
+ *   counter.mount(document.getElementById('app')!);
+ */
 export class Component {
   private el: HTMLElement | null = null;
   private _state: Record<string, any>;
-  private renderFn: (state: any, props?: any) => any;
+  private renderFn: (state: any) => any;
   private onMountFn?: (el: HTMLElement) => void;
 
-  constructor(config: { render: (state: any, props?: any) => any; state?: any; onMount?: (el: HTMLElement) => void }) {
+  constructor(config: {
+    render: (state: any) => any;
+    state?: any;
+    onMount?: (el: HTMLElement) => void;
+  }) {
     this._state = config.state || {};
     this.renderFn = config.render;
     this.onMountFn = config.onMount;
   }
 
+  /** Mount (or re-mount) the component into a container. */
   mount(container: HTMLElement): HTMLElement {
     this.el = container;
     container.innerHTML = '';
@@ -569,11 +617,13 @@ export class Component {
     return container;
   }
 
+  /** Merge `newState` into the current state and re-render. */
   setState(newState: Record<string, any>) {
     this._state = { ...this._state, ...newState };
     if (this.el) this.mount(this.el);
   }
 
+  /** Return a shallow copy of the current state. */
   getState() { return { ...this._state }; }
 }
 
@@ -651,6 +701,21 @@ export interface RouterOptions {
   base?: string;
 }
 
+/**
+ * Hash-based or History-API SPA router. Use `createRouter()` to make one.
+ *
+ *   const router = createRouter({ mode: 'history' });
+ *   router.route('/',     () => renderHome());
+ *   router.route('/about', () => renderAbout());
+ *   router.route('/users/:id', (params) => renderUser(params.id));
+ *   router.notFound(() => renderNotFound());
+ *   router.init();
+ *   router.navigate('/about');
+ *
+ * Default mode is `'hash'` (works on any static host). Use `'history'`
+ * for clean URLs, paired with `make404Html()` for static hosts without
+ * server-side rewrites.
+ */
 export class Router {
   private routes: { path: string; handler: RouteHandler }[] = [];
   private notFoundHandler?: RouteHandler;
@@ -846,9 +911,22 @@ function buildURL(base: string, endpoint: string, params?: Record<string, string
   return url;
 }
 
+/**
+ * Minimal HTTP client built on `fetch`. Supports query params, timeouts,
+ * FormData bodies, and access to status/headers on every response.
+ *
+ *   const api = createHttp('https://api.example.com');
+ *   const { data, ok, status } = await api.get<{ items: any[] }>('/items', {
+ *     params: { page: 2, limit: 50 },
+ *     timeout: 5000,
+ *   });
+ *
+ *   if (!ok) throw new HttpError(`API error: ${status}`, status, data);
+ */
 export class HttpClient {
   private baseURL = '';
   constructor(baseURL = '') { this.baseURL = baseURL; }
+  /** Override the base URL. Returns `this` for chaining. */
   setBaseURL(url: string) { this.baseURL = url; return this; }
 
   async request<T = any>(endpoint: string, options: HttpOptions = {}): Promise<HttpResponse<T>> {
@@ -906,6 +984,30 @@ interface DragDropOptions {
   dropZoneSelector?: string;
 }
 
+/**
+ * Drag-and-drop container. Attaches event listeners to a parent element
+ * and uses event delegation to dispatch drops between draggable items
+ * and drop zones (no need to attach listeners to each item).
+ *
+ * Markup convention:
+ *   - Mark draggable items with `data-dnd-draggable="<id>"`
+ *   - Mark drop zones with `data-dnd-dropzone="<id>"`
+ *   Or pass custom selectors via the `draggableSelector` and
+ *   `dropZoneSelector` options.
+ *
+ *   const board = createDragDropContainer(document.getElementById('board')!, {
+ *     onDrop: (taskId, columnId) => moveTask(taskId, columnId),
+ *   });
+ *
+ *   // Markup:
+ *   //   <div id="board">
+ *   //     <div data-dnd-dropzone="todo">      <div data-dnd-draggable="t1">A</div> </div>
+ *   //     <div data-dnd-dropzone="inprogress"> <div data-dnd-draggable="t2">B</div> </div>
+ *   //   </div>
+ *
+ *   // later, to clean up:
+ *   board.destroy();
+ */
 export class DragDropContainer {
   private container: HTMLElement;
   private activeDragId: string | null = null;
@@ -1022,6 +1124,18 @@ export function dropZone(id: string, attrs: Attrs = {}) {
 
 // LAZY
 
+/**
+ * Viewport-aware list renderer. Mounts only the items currently visible
+ * (plus a 100px margin) using `IntersectionObserver`, so very long lists
+ * stay fast.
+ *
+ *   const lc = createLazyContainer(document.getElementById('list')!);
+ *   lc.setChildren(hugeArray.map((item, i) => div(item.name, { 'data-id': i })));
+ *
+ * Items are placeholders (`<div data-index="N">` with min-height 50px)
+ * until they enter the viewport, at which point they're replaced with
+ * the real element.
+ */
 export class LazyContainer {
   private container: HTMLElement;
   private children: any[] = [];
@@ -1109,10 +1223,38 @@ export function alert(message: string, type: 'success' | 'error' | 'warning' | '
   return div(message, css({ padding: '12px 16px', borderRadius: '8px', backgroundColor: c.bg, color: c.text }));
 }
 
-export function spinner(size = 24) {
-  return div('', css({ width: size + 'px', height: size + 'px', border: '3px solid #f3f3f3', borderTop: '3px solid #3498db', borderRadius: '50%', animation: 'spin 1s linear infinite' }));
+/**
+ * Spinner element. Animates a circular ring using the `nx-spinner` class
+ * with the `nx-spin` keyframe. The keyframe is auto-injected into <head>
+ * on first use, so no CSS setup is required.
+ *
+ * Customize colors with CSS variables:
+ *   --nx-spinner-track: ring color (default #f3f3f3)
+ *   --nx-spinner-head:  spinning tip color (default #3498db)
+ */
+export function spinner(size: number = 24) {
+  injectSpinnerKeyframe();
+  return div('', {
+    ...cls('nx-spinner'),
+    ...css({
+      width: size + 'px',
+      height: size + 'px',
+      border: '3px solid var(--nx-spinner-track, #f3f3f3)',
+      borderTopColor: 'var(--nx-spinner-head, #3498db)',
+      borderRadius: '50%',
+    }),
+  });
 }
 
+let _spinnerKeyframeInjected = false;
+function injectSpinnerKeyframe() {
+  if (_spinnerKeyframeInjected || typeof document === 'undefined') return;
+  _spinnerKeyframeInjected = true;
+  const style = document.createElement('style');
+  style.setAttribute('data-nx-spinner', '');
+  style.textContent = '@keyframes nx-spin { to { transform: rotate(360deg); } } .nx-spinner { animation: nx-spin 1s linear infinite; }';
+  document.head.appendChild(style);
+}
 // DEFAULT EXPORT
 
 export default {
@@ -1121,7 +1263,7 @@ export default {
   button, input, textarea, select, option,
   ul, ol, li,
   img, video, audio,
-  nav, header, footer, main, section, article, aside,
+  nav, header, footer, main, mainEl, section, article, aside,
   form, label, fieldset, legend,
   br, hr, spacer,
 
@@ -1135,7 +1277,7 @@ export default {
   h, createDOM, renderToString,
 
   // App & State
-  createApp, createStore, Store, Component,
+  createApp, createStore, Store, mount, Component,
 
   // Router
   createRouter, Router, make404Html,
