@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   h, div, span, p, h1, h2, button, input, br, createDOM, renderToString,
   ul, ol, li, img, form, label, select, option,
@@ -7,6 +7,7 @@ import {
   row, column, center, grid, flex, full,
   createStore, createApp,
   createRouter, Router, make404Html,
+  createHttp, HttpClient, HttpError,
   createDragDropContainer, draggable, dropZone,
 } from './nexuslite';
 
@@ -477,6 +478,100 @@ describe('createStore', () => {
     store.setState({ count: 1 });
     expect(l1).toHaveBeenCalledTimes(1);
     expect(l2).toHaveBeenCalledTimes(1);
+  });
+});
+
+// HTTP CLIENT
+
+describe('createHttp', () => {
+  // jsdom doesn't ship fetch by default; stub it for these tests.
+  const originalFetch = globalThis.fetch;
+  beforeEach(() => {
+    // @ts-ignore
+    globalThis.fetch = vi.fn();
+  });
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('builds URL with query params', async () => {
+    (globalThis.fetch as any).mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => ({ id: 1 }),
+    });
+    const http = createHttp('https://api.example.com');
+    await http.get('/users', { params: { id: 42, name: 'AG' } });
+    const calledWith = (globalThis.fetch as any).mock.calls[0][0];
+    expect(calledWith).toBe('https://api.example.com/users?id=42&name=AG');
+  });
+
+  it('appends params to a URL that already has a query string', async () => {
+    (globalThis.fetch as any).mockResolvedValue({
+      ok: true, status: 200, headers: new Headers(),
+      json: async () => ({}),
+    });
+    const http = createHttp('https://api.example.com');
+    await http.get('/users?active=true', { params: { limit: 10 } });
+    const calledWith = (globalThis.fetch as any).mock.calls[0][0];
+    expect(calledWith).toBe('https://api.example.com/users?active=true&limit=10');
+  });
+
+  it('returns ok=true, status, and headers for 2xx', async () => {
+    const headers = new Headers({ 'content-type': 'application/json' });
+    (globalThis.fetch as any).mockResolvedValue({
+      ok: true, status: 200, headers,
+      json: async () => ({ name: 'AG' }),
+    });
+    const http = createHttp();
+    const res = await http.get<{ name: string }>('/me');
+    expect(res.ok).toBe(true);
+    expect(res.status).toBe(200);
+    expect(res.data).toEqual({ name: 'AG' });
+    expect(res.headers).toBe(headers);
+  });
+
+  it('returns ok=false for 4xx (no throw, just ok=false)', async () => {
+    (globalThis.fetch as any).mockResolvedValue({
+      ok: false, status: 404, headers: new Headers(),
+      json: async () => ({ error: 'not found' }),
+    });
+    const http = createHttp();
+    const res = await http.get('/missing');
+    expect(res.ok).toBe(false);
+    expect(res.status).toBe(404);
+  });
+
+  it('does not auto-JSON the body when json: false', async () => {
+    (globalThis.fetch as any).mockResolvedValue({
+      ok: true, status: 200, headers: new Headers(),
+      json: async () => ({}),
+    });
+    const formData = new FormData();
+    formData.append('name', 'AG');
+    const http = createHttp();
+    await http.post('/upload', formData, { json: false });
+    const callArgs = (globalThis.fetch as any).mock.calls[0][1];
+    expect(callArgs.body).toBe(formData);
+    // Content-Type should NOT be set to application/json
+    expect(callArgs.headers?.['Content-Type']).toBeUndefined();
+  });
+
+  it('aborts the request on timeout', async () => {
+    // fetch that respects the abort signal
+    (globalThis.fetch as any).mockImplementation((url: string, init: RequestInit) => {
+      return new Promise((resolve, reject) => {
+        init.signal?.addEventListener('abort', () => {
+          const err: any = new Error('aborted');
+          err.name = 'AbortError';
+          reject(err);
+        });
+        // never resolve otherwise
+      });
+    });
+    const http = createHttp();
+    await expect(http.get('/slow', { timeout: 50 })).rejects.toThrow();
   });
 });
 
