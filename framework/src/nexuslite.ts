@@ -557,18 +557,38 @@ export function renderToString(element: any): string {
 
 // COMPONENT
 
+/**
+ * A self-contained UI component with its own local state. Useful for
+ * sub-components that don't share state with the global app store.
+ *
+ * For app-level state, prefer `createApp()` with a `createStore()`.
+ *
+ *   const counter = new Component({
+ *     state: { count: 0 },
+ *     render: (s) => div([
+ *       h1(`Count: ${s.count}`),
+ *       button('+', on('click', () => counter.setState({ count: s.count + 1 }))),
+ *     ]),
+ *   });
+ *   counter.mount(document.getElementById('app')!);
+ */
 export class Component {
   private el: HTMLElement | null = null;
   private _state: Record<string, any>;
-  private renderFn: (state: any, props?: any) => any;
+  private renderFn: (state: any) => any;
   private onMountFn?: (el: HTMLElement) => void;
 
-  constructor(config: { render: (state: any, props?: any) => any; state?: any; onMount?: (el: HTMLElement) => void }) {
+  constructor(config: {
+    render: (state: any) => any;
+    state?: any;
+    onMount?: (el: HTMLElement) => void;
+  }) {
     this._state = config.state || {};
     this.renderFn = config.render;
     this.onMountFn = config.onMount;
   }
 
+  /** Mount (or re-mount) the component into a container. */
   mount(container: HTMLElement): HTMLElement {
     this.el = container;
     container.innerHTML = '';
@@ -578,11 +598,13 @@ export class Component {
     return container;
   }
 
+  /** Merge `newState` into the current state and re-render. */
   setState(newState: Record<string, any>) {
     this._state = { ...this._state, ...newState };
     if (this.el) this.mount(this.el);
   }
 
+  /** Return a shallow copy of the current state. */
   getState() { return { ...this._state }; }
 }
 
@@ -660,6 +682,21 @@ export interface RouterOptions {
   base?: string;
 }
 
+/**
+ * Hash-based or History-API SPA router. Use `createRouter()` to make one.
+ *
+ *   const router = createRouter({ mode: 'history' });
+ *   router.route('/',     () => renderHome());
+ *   router.route('/about', () => renderAbout());
+ *   router.route('/users/:id', (params) => renderUser(params.id));
+ *   router.notFound(() => renderNotFound());
+ *   router.init();
+ *   router.navigate('/about');
+ *
+ * Default mode is `'hash'` (works on any static host). Use `'history'`
+ * for clean URLs, paired with `make404Html()` for static hosts without
+ * server-side rewrites.
+ */
 export class Router {
   private routes: { path: string; handler: RouteHandler }[] = [];
   private notFoundHandler?: RouteHandler;
@@ -855,9 +892,22 @@ function buildURL(base: string, endpoint: string, params?: Record<string, string
   return url;
 }
 
+/**
+ * Minimal HTTP client built on `fetch`. Supports query params, timeouts,
+ * FormData bodies, and access to status/headers on every response.
+ *
+ *   const api = createHttp('https://api.example.com');
+ *   const { data, ok, status } = await api.get<{ items: any[] }>('/items', {
+ *     params: { page: 2, limit: 50 },
+ *     timeout: 5000,
+ *   });
+ *
+ *   if (!ok) throw new HttpError(`API error: ${status}`, status, data);
+ */
 export class HttpClient {
   private baseURL = '';
   constructor(baseURL = '') { this.baseURL = baseURL; }
+  /** Override the base URL. Returns `this` for chaining. */
   setBaseURL(url: string) { this.baseURL = url; return this; }
 
   async request<T = any>(endpoint: string, options: HttpOptions = {}): Promise<HttpResponse<T>> {
@@ -915,6 +965,30 @@ interface DragDropOptions {
   dropZoneSelector?: string;
 }
 
+/**
+ * Drag-and-drop container. Attaches event listeners to a parent element
+ * and uses event delegation to dispatch drops between draggable items
+ * and drop zones (no need to attach listeners to each item).
+ *
+ * Markup convention:
+ *   - Mark draggable items with `data-dnd-draggable="<id>"`
+ *   - Mark drop zones with `data-dnd-dropzone="<id>"`
+ *   Or pass custom selectors via the `draggableSelector` and
+ *   `dropZoneSelector` options.
+ *
+ *   const board = createDragDropContainer(document.getElementById('board')!, {
+ *     onDrop: (taskId, columnId) => moveTask(taskId, columnId),
+ *   });
+ *
+ *   // Markup:
+ *   //   <div id="board">
+ *   //     <div data-dnd-dropzone="todo">      <div data-dnd-draggable="t1">A</div> </div>
+ *   //     <div data-dnd-dropzone="inprogress"> <div data-dnd-draggable="t2">B</div> </div>
+ *   //   </div>
+ *
+ *   // later, to clean up:
+ *   board.destroy();
+ */
 export class DragDropContainer {
   private container: HTMLElement;
   private activeDragId: string | null = null;
@@ -1031,6 +1105,18 @@ export function dropZone(id: string, attrs: Attrs = {}) {
 
 // LAZY
 
+/**
+ * Viewport-aware list renderer. Mounts only the items currently visible
+ * (plus a 100px margin) using `IntersectionObserver`, so very long lists
+ * stay fast.
+ *
+ *   const lc = createLazyContainer(document.getElementById('list')!);
+ *   lc.setChildren(hugeArray.map((item, i) => div(item.name, { 'data-id': i })));
+ *
+ * Items are placeholders (`<div data-index="N">` with min-height 50px)
+ * until they enter the viewport, at which point they're replaced with
+ * the real element.
+ */
 export class LazyContainer {
   private container: HTMLElement;
   private children: any[] = [];
