@@ -1,136 +1,167 @@
-# NexusLite: Frontend Framework from Scratch
+# NexusLite
 
-A lightweight, zero-dependency reactive frontend framework built from scratch in TypeScript.
+> A zero-dependency reactive frontend framework in TypeScript.
+> Readable. Tiny. Predictable.
 
-NexusLite is designed with a singular, clear goal: **perfect readability**. A developer can look directly at the framework's core source code and immediately understand how reactive UI rendering, state management, and routing behaves on the web.
+NexusLite is a small framework for building reactive web applications in
+TypeScript. It provides elements, state management, routing, HTTP helpers,
+drag-and-drop, and pre-rendering — all in a few thousand lines, with
+**no runtime dependencies**. The whole framework bundles to under
+**20KB gzipped** and you can read the entire core in an afternoon.
 
----
+- **Zero dependencies** — pure web standards (DOM, `fetch`, `IntersectionObserver`)
+- **TypeScript-first** — types for the entire public API
+- **Reactive state** — explicit pub-sub store, no virtual-DOM surprises
+- **Pre-rendering** — turn any app into static HTML at build time
+- **Two routing modes** — Hash and History API, your choice
+- **MIT licensed** — use it in any project, commercial or otherwise
 
-## Why Use NexusLite Instead of react / next.js or No Framework at All?
+## Installation
 
-Here is where NexusLite fits into the modern web ecosystem and why it stands out:
+```bash
+npm install nexuslite
+```
 
-### 1. Compared to React and Next.js
-* **Zero build-step friction:** React and Next.js require massive build configurations, compiler steps (Babel, SWC, Turbopack), and hydration engines. If something breaks, you end up debugging machine-generated code. NexusLite uses native TypeScript and DOM structures with absolutely zero magical compilation passes.
-* **Transparent reactive stream:** React state is filled with edge cases like captured closures or re-render traps. NexusLite relies on an explicit Publish-Subscriber state machine. You update state using `store.setState()`, which instantly triggers predictable DOM repaints.
-* **Perfect for low-power environments:** React carries substantial file size and memory footprint. NexusLite builds into a tiny direct-compile bundle. It constructs actual elements in a single sequential layout pass, bypassing the memory-heavy Fiber reconciliation loops entirely.
-
-### 2. Compared to Plain Vanilla JS (No Framework)
-* **Declarative vs Imperative code:** In vanilla JS, you write endless imperative lines of `document.createElement`, setting classes, and appending nodes manually. With NexusLite, your layouts are declarative, representing children, elements, styles, and events in clean nested syntax resembling natural HTML.
-* **Synchronized state:** In plain JS, keeping data sets aligned with elements requires fragile manual query-selectors and element targeting. NexusLite automatically repaints elements when changes hit the central store.
-* **Optimized utilities included:** To handle common SPA demands, NexusLite packages a hash-based router and a viewport-aware list lazy loader using highly-optimized browser `IntersectionObserver` elements right out of the box, preserving native performance.
-
-### 3. Compared to Minimalist Frameworks (like Hyperapp, Backbone, or Mithril)
-* **No synthetic abstract layer:** Modern micro-frameworks like Hyperapp require highly complex Virtual-DOM diffing algorithms. When children arrays shift, those engines must run recursive diffs to calculate patches, which can introduce edge cases. NexusLite values code transparency over algorithmic complexity. State updates trigger immediate, direct DOM element repaints on the registered root element, keeping the code highly maintainable and free of hidden scheduling abstractions.
-* **Direct DOM Shorthands:** To build elements, other light frameworks rely strictly on nested `h()` configurations. NexusLite exposes clear shorthand HTML elements (`div()`, `p()`, `button()`) with automatic parameter parsing built in, yielding significantly cleaner layouts.
-
----
-
-## The Philosophy
-
-1. **Readability First:** Code reads like pure semantic HTML layout hierarchies within standard JavaScript/TypeScript files.
-2. **0 Dependencies:** Built purely on native web APIs (standard DOM manipulation, IntersectionObserver, and window location updates). No external dependencies under runtime.
-3. **No Magic:** No complex, hidden compilation passes, and no mystery React Fiber or Zone.js runtimes. State updates follow a direct, clean publish-subscribe pattern that triggers fast, predictable view updates.
-
----
-
-## Repository Structure
-
-- [framework/](framework/) - Core source code, typing schemas, and internal test suites.
- - [framework/src/nexuslite.ts](framework/src/nexuslite.ts) - The heart of the framework (DOM builder, state store, Client Router, HTTP client, and IntersectionObserver Lazy container).
-- [example/](example/) - A complete, real-world Single Page Kanban application utilizing 100% of the developed feature set.
-
----
-
-## Quick Start Example
-
-Add standard elements to the page, wire up custom reactivity with standard store bindings, and bootstrap:
+Then import it:
 
 ```typescript
-import { createApp, createStore, div, h1, button, css } from 'nexuslite';
+import { createApp, createStore, div, h1, button, on } from 'nexuslite';
+```
 
-// Define a reactive store
+Node 18+ and any modern browser (Chrome/Edge/Firefox/Safari from the last
+couple of years).
+
+## Quick start
+
+```typescript
+import { createApp, createStore, div, h1, button, on } from 'nexuslite';
+
 const store = createStore({ count: 0 });
 
-// Render responsive UI bound directly to state updates
-function renderApp(state: { count: number }) {
-  return div({ id: 'app-root' }, [
-    h1(`Current Count: ${state.count}`),
-    button('Increment', {
-      on: { click: () => store.setState({ count: state.count + 1 }) }
-    })
-  ]);
-}
-
-// Bootstrap application on target container
 createApp({
   root: '#app',
   state: store,
-  render: renderApp
+  render: (state) => div([
+    h1(`Count: ${state.count}`),
+    button('+', on('click', () => store.setState({ count: state.count + 1 }))),
+  ]),
 });
 ```
 
----
+That's a working counter — state, view, and event binding in one file.
 
-## Architecture and Feature Tour
+## What's in the box
 
-### 1. Element Generation (`createDOM` and Shorthands)
-Instead of manually typing `document.createElement` strings everywhere, element factories construct standard configuration objects representing HTML elements.
-- Shorthand helpers (`div()`, `p()`, `button()`, `input()`, etc.) handle variable arguments smoothly so child arrays and attribute dictionaries are normalized automatically.
-- High-level properties like event lists, class names, datasets, and flex layout helpers map directly to native DOM node modifiers during rendering.
+| Module | What it does |
+|---|---|
+| **Elements** | `div()`, `h1()`, `button()`, `input()`, `ul()`, `li()`, ... — 30+ HTML elements as composable functions |
+| **State** | `createStore<T>()` — typed pub-sub state, `setState()`, `subscribe()`, `on(key, ...)` |
+| **Routing** | `createRouter({ mode: 'history' \| 'hash' })` — both modes, params, guards, notFound |
+| **HTTP** | `createHttp()` — `get/post/put/delete/patch` with JSON handling |
+| **Pre-render** | `prerender()` (separate entry: `nexuslite/prerender`) — build-time SSG |
+| **Lazy** | `createLazyContainer()` — `IntersectionObserver`-based list virtualization |
+| **Drag and drop** | `createDragDropContainer()` with `draggable()` / `dropZone()` |
+| **Patterns** | `card()`, `modal()`, `navbar()`, `alert()`, `spinner()` |
+| **Layout** | `row()`, `column()`, `center()`, `grid()`, `flex()` |
+| **Attributes** | `cls()`, `css()`, `on()`, `onMulti()`, `bindTo()`, `data()`, ... |
+| **Strings** | `renderToString()` — turn element trees into HTML strings (used by prerender) |
 
-### 2. State Management (`createStore`)
-A pure Publisher-Subscriber store configuration. State transitions are atomic, explicit, and lightweight. When state updates occur via `store.setState()`, registered callbacks notify observers and re-render the target root element instantly.
+## Pre-rendering to static HTML
 
-### 3. Progressive Routing (`createRouter`)
-A hash-based SPA (`#/path`) routing implementation. It maps URL hash changes recursively to state triggers, avoiding tricky backend server configurations. The router parses clean route maps and exposes programmable navigation actions (`router.navigate('/path')`).
+The most distinctive feature: any NexusLite app can be pre-rendered to
+static HTML at build time. SEO-friendly, no client-side hydration required.
 
-### 4. Advanced Performance (Viewport-Based Lazy Render)
-Large arrays of data can easily degrade browser layout performance. NexusLite implements `createLazyContainer()` - a reactive wrapper using the native `IntersectionObserver`. List rows are mounted and rendered only as they physically enter the container's viewport, maintaining a fluid 60 FPS scrolling experience.
+```typescript
+// build/prerender.ts
+import { prerender } from 'nexuslite/prerender';
 
-### 5. Native Event Handling and Delegation
-Events are defined declaratively as properties during render time. The framework supports event delegation, preventing default transitions and stopping propagation where custom flow control is needed.
+await prerender({
+  routes: {
+    '/': home,
+    '/about': about,
+    '/projects': projects,
+  },
+  initialState: { theme: 'dark', lang: 'en' },
+  outDir: 'dist',
+  template: readFileSync('src/index.template.html', 'utf8'),
+});
+```
 
----
+Each route becomes a static HTML file at build time. The browser serves
+plain HTML — fast, indexable, accessible. The framework is purely a
+build tool for these apps; the runtime is whatever the user adds.
 
-## Build and Running Instructions
+## Browser support
 
-To compile, test, and run locally, execute:
+- Chrome / Edge / Firefox / Safari: latest 2 versions
+- Node: 18+ (for the prerender build step)
+- ESM first, CJS compatible (via `require` in the `exports` map)
 
-```powershell
-# 1. Build the framework output bundles
+## Bundle size
+
+| Build | Raw | Gzipped |
+|---|---|---|
+| Core framework | ~33KB | **~9KB** |
+| + prerender (Node only, not shipped to browser) | ~5KB | ~2KB |
+
+## Architecture
+
+The whole framework is one TypeScript file. State updates trigger
+immediate, direct DOM repaints. There is no virtual DOM diffing,
+no hidden compilation step, no scheduler. Updates are explicit and
+traceable.
+
+## Why NexusLite?
+
+**Compared to React/Next.js:**
+- No build-step debugging — NexusLite uses native TypeScript and DOM, no Babel/SWC/Turbopack
+- Explicit pub-sub state — `store.setState()` directly triggers DOM repaints, no captured closure gotchas
+- Tiny footprint — under 20KB gzipped core, no virtual DOM reconciler
+
+**Compared to plain vanilla JS:**
+- Declarative layouts — write `div([h1(...), p(...)])` instead of `createElement` + manual `appendChild` chains
+- Synchronized state — the store keeps data and DOM in lockstep
+- Built-in router, HTTP, drag-and-drop, lazy, pre-render — utilities ready to use
+
+**Compared to minimalist frameworks (Hyperapp, Mithril, etc.):**
+- No virtual-DOM diffing — direct DOM updates, transparent execution
+- Direct element shorthands — `div()`, `h1()`, `button()` read like HTML
+
+## Examples
+
+The [`example/`](example/) directory has a real-world Kanban board that uses
+every feature: state, routing, HTTP, drag-and-drop, lazy rendering. Run it
+with:
+
+```bash
 cd framework
 npm install
 npm run build
 
-# 2. Run the test harness
-npm run test:run
-
-# 3. Compile and launch the Kanban App locally
 cd ../example
 npm install
 npm run dev
 ```
-Open **`http://localhost:5173/`** to view the application live.
 
-1. **Type safety** catches bugs at compile time, not runtime
-2. **Self-documenting code** - interfaces make the architecture obvious
-3. **Better IDE support** - autocompletion, refactoring tools
-4. **Framework-quality code** - the task is to demonstrate skill, not write quick hacks
+Then open `http://localhost:5173/`.
 
-### Why Custom Element trees instead of full Virtual-DOM Diffing?
+## Documentation
 
-Full Virtual-DOM trees and dynamic diffing engines (like React Fiber) introduce deep recursive comparisons, hook tracking, and hidden scheduling loops that make code difficult to debug.
-Our direct re-render model creates standard JS objects to represent nodes and renders them in a single fast, clean pass. State updates simply replace targeted container roots. This keeps performance incredibly high while leaving the execution path 100% transparent.
+- **API reference**: [`framework/README.md`](framework/README.md)
+- **Architecture deep-dive**: see the [Wiki](https://github.com/AG064/nexuslite/wiki)
+- **Changelog**: [`CHANGELOG.md`](CHANGELOG.md)
 
-### Why Hash-based Routing?
+## Contributing
 
-Server-configured routing (the History API) requires specific backend routing fallback configuration. Hash routing (`#/path`) works instantly on any static host out-of-the-box - the hash is managed entirely on the client, always loading our single SPA bundle seamlessly.
+Issues and pull requests welcome. For major changes, please open an issue
+first to discuss what you'd like to change. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
-### Why Event Delegation?
+## License
 
-Individually attaching click handlers to thousands of table or list rows uses non-trivial memory and causes browser performance degradation. Event delegation assigns a single, central listener to the parent element, letting events bubble up naturally to resolve targets dynamically.
+[MIT](LICENSE) — use freely in any project.
 
-### Why declarative properties instead of manual `addEventListener`?
+## Acknowledgements
 
-In standard reactive environments, you shouldn't call modern imperative query selectors and `addEventListener` after rendering. Nexus.js handles this declaratively: callback properties are defined alongside elements inside the render configurations. We bind them directly during node initialization in the compilation loop.
+Built from scratch in TypeScript. No frameworks were used to bootstrap it
+(other than `tsc` and `vitest` for development).

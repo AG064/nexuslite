@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   h, div, span, p, h1, h2, button, input, br, createDOM, renderToString,
   ul, ol, li, img, form, label, select, option,
-  cls, css, id, data, on, onMulti, href, ph, type, name, val,
+  cls, css, id, data, on, onMulti, delegate, href, ph, type, inputType, name, val,
   disabled, required, autofocus, readonly, checked, bindTo,
   row, column, center, grid, flex, full,
   createStore, createApp,
@@ -207,6 +207,51 @@ describe('Attribute Helpers', () => {
     const isDisabled = false;
     expect(cls('btn', isActive && 'btn--active', isDisabled && 'btn--disabled').className)
       .toBe('btn btn--active');
+  });
+
+  it('inputType is an alias for type', () => {
+    expect(inputType('email')).toEqual({ type: 'email' });
+    expect(inputType('checkbox')).toEqual({ type: 'checkbox' });
+    // The two functions should produce the same output
+    expect(inputType('text')).toEqual(type('text'));
+  });
+
+  it('delegate fires for matching children, not for the root itself', () => {
+    document.body.innerHTML = '<div id="root"><button data-action="x">x</button><span data-action="y">y</span></div>';
+    const root = document.getElementById('root')!;
+    const handler = vi.fn();
+    const off = delegate(root, 'click', '[data-action]', (e, target) => {
+      handler(target.dataset.action);
+    });
+    root.querySelector('[data-action="x"]')!.dispatchEvent(new Event('click', { bubbles: true }));
+    root.querySelector('[data-action="y"]')!.dispatchEvent(new Event('click', { bubbles: true }));
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(handler).toHaveBeenNthCalledWith(1, 'x');
+    expect(handler).toHaveBeenNthCalledWith(2, 'y');
+    off();
+    root.querySelector('[data-action="x"]')!.dispatchEvent(new Event('click', { bubbles: true }));
+    expect(handler).toHaveBeenCalledTimes(2); // off() worked
+  });
+
+  it('delegate ignores events that do not match the selector', () => {
+    document.body.innerHTML = '<div id="root"><span>plain</span><button data-x>x</button></div>';
+    const root = document.getElementById('root')!;
+    const handler = vi.fn();
+    const off = delegate(root, 'click', '[data-x]', () => handler());
+    root.querySelector('span')!.dispatchEvent(new Event('click', { bubbles: true }));
+    expect(handler).not.toHaveBeenCalled();
+    off();
+  });
+
+  it('delegate returns an unsubscribe function', () => {
+    document.body.innerHTML = '<div id="root"><button data-x>x</button></div>';
+    const root = document.getElementById('root')!;
+    const handler = vi.fn();
+    const off = delegate(root, 'click', '[data-x]', () => handler());
+    expect(typeof off).toBe('function');
+    off();
+    root.querySelector('[data-x]')!.dispatchEvent(new Event('click', { bubbles: true }));
+    expect(handler).not.toHaveBeenCalled();
   });
 
   it('bindTo returns value and on handler that sync to a store', () => {
