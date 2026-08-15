@@ -801,8 +801,50 @@ function scriptPathEscape(p: string): string {
 
 // HTTP
 
-interface HttpOptions { method?: string; headers?: Record<string, string>; body?: any; }
-interface HttpResponse<T = any> { data: T; status: number; }
+export interface HttpOptions {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: any;
+  /** Query string parameters, will be URL-encoded and appended to the URL. */
+  params?: Record<string, string | number | boolean>;
+  /** Abort the request after this many ms. 0 or undefined = no timeout. */
+  timeout?: number;
+  /**
+   * If true (default), automatically JSON.stringify the body and set
+   * Content-Type. Set false to send FormData, Blob, raw strings, etc.
+   */
+  json?: boolean;
+}
+
+export interface HttpResponse<T = any> {
+  data: T;
+  status: number;
+  /** True for 2xx responses. */
+  ok: boolean;
+  headers: Headers;
+}
+
+export class HttpError extends Error {
+  status: number;
+  data: any;
+  constructor(message: string, status: number, data: any) {
+    super(message);
+    this.name = 'HttpError';
+    this.status = status;
+    this.data = data;
+  }
+}
+
+function buildURL(base: string, endpoint: string, params?: Record<string, string | number | boolean>): string {
+  let url = base ? base + endpoint : endpoint;
+  if (params && Object.keys(params).length > 0) {
+    const qs = Object.entries(params)
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+      .join('&');
+    url += (url.includes('?') ? '&' : '?') + qs;
+  }
+  return url;
+}
 
 export class HttpClient {
   private baseURL = '';
@@ -810,22 +852,48 @@ export class HttpClient {
   setBaseURL(url: string) { this.baseURL = url; return this; }
 
   async request<T = any>(endpoint: string, options: HttpOptions = {}): Promise<HttpResponse<T>> {
-    const url = this.baseURL ? this.baseURL + endpoint : endpoint;
+    const url = buildURL(this.baseURL, endpoint, options.params);
+    const json = options.json !== false; // default true
     const config: RequestInit = {
       method: options.method || 'GET',
-      headers: { 'Content-Type': 'application/json', ...options.headers },
+      headers: json ? { 'Content-Type': 'application/json', ...options.headers } : options.headers,
     };
-    if (options.body && config.method !== 'GET') config.body = JSON.stringify(options.body);
-    const res = await fetch(url, config);
-    const data = await res.json().catch(() => null);
-    return { data: data as T, status: res.status };
+    if (options.body != null && config.method !== 'GET') {
+      config.body = json ? JSON.stringify(options.body) : options.body;
+    }
+
+    // Timeout support via AbortController
+    const controller = new AbortController();
+    let timeoutId: any = null;
+    if (options.timeout && options.timeout > 0) {
+      timeoutId = setTimeout(() => controller.abort(), options.timeout);
+    }
+    config.signal = controller.signal;
+
+    try {
+      const res = await fetch(url, config);
+      const data = await res.json().catch(() => null);
+      return { data: data as T, status: res.status, ok: res.ok, headers: res.headers };
+    } finally {
+      if (timeoutId !== null) clearTimeout(timeoutId);
+    }
   }
 
-  get<T = any>(endpoint: string) { return this.request<T>(endpoint, { method: 'GET' }); }
-  post<T = any>(endpoint: string, data?: any) { return this.request<T>(endpoint, { method: 'POST', body: data }); }
-  put<T = any>(endpoint: string, data?: any) { return this.request<T>(endpoint, { method: 'PUT', body: data }); }
-  delete<T = any>(endpoint: string) { return this.request<T>(endpoint, { method: 'DELETE' }); }
-  patch<T = any>(endpoint: string, data?: any) { return this.request<T>(endpoint, { method: 'PATCH', body: data }); }
+  get<T = any>(endpoint: string, opts?: Omit<HttpOptions, 'method' | 'body'>) {
+    return this.request<T>(endpoint, { ...opts, method: 'GET' });
+  }
+  post<T = any>(endpoint: string, data?: any, opts?: Omit<HttpOptions, 'method'>) {
+    return this.request<T>(endpoint, { ...opts, method: 'POST', body: data });
+  }
+  put<T = any>(endpoint: string, data?: any, opts?: Omit<HttpOptions, 'method'>) {
+    return this.request<T>(endpoint, { ...opts, method: 'PUT', body: data });
+  }
+  delete<T = any>(endpoint: string, opts?: Omit<HttpOptions, 'method' | 'body'>) {
+    return this.request<T>(endpoint, { ...opts, method: 'DELETE' });
+  }
+  patch<T = any>(endpoint: string, data?: any, opts?: Omit<HttpOptions, 'method'>) {
+    return this.request<T>(endpoint, { ...opts, method: 'PATCH', body: data });
+  }
 }
 
 export function createHttp(baseURL?: string) { return new HttpClient(baseURL); }
@@ -1073,7 +1141,7 @@ export default {
   createRouter, Router, make404Html,
 
   // HTTP
-  createHttp, HttpClient,
+  createHttp, HttpClient, HttpError,
 
   // Drag and Drop
   createDragDropContainer, DragDropContainer, draggable, dropZone,
