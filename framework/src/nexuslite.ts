@@ -1109,10 +1109,38 @@ export function alert(message: string, type: 'success' | 'error' | 'warning' | '
   return div(message, css({ padding: '12px 16px', borderRadius: '8px', backgroundColor: c.bg, color: c.text }));
 }
 
-export function spinner(size = 24) {
-  return div('', css({ width: size + 'px', height: size + 'px', border: '3px solid #f3f3f3', borderTop: '3px solid #3498db', borderRadius: '50%', animation: 'spin 1s linear infinite' }));
+/**
+ * Spinner element. Animates a circular ring using the `nx-spinner` class
+ * with the `nx-spin` keyframe. The keyframe is auto-injected into <head>
+ * on first use, so no CSS setup is required.
+ *
+ * Customize colors with CSS variables:
+ *   --nx-spinner-track: ring color (default #f3f3f3)
+ *   --nx-spinner-head:  spinning tip color (default #3498db)
+ */
+export function spinner(size: number = 24) {
+  injectSpinnerKeyframe();
+  return div('', {
+    ...cls('nx-spinner'),
+    ...css({
+      width: size + 'px',
+      height: size + 'px',
+      border: '3px solid var(--nx-spinner-track, #f3f3f3)',
+      borderTopColor: 'var(--nx-spinner-head, #3498db)',
+      borderRadius: '50%',
+    }),
+  });
 }
 
+let _spinnerKeyframeInjected = false;
+function injectSpinnerKeyframe() {
+  if (_spinnerKeyframeInjected || typeof document === 'undefined') return;
+  _spinnerKeyframeInjected = true;
+  const style = document.createElement('style');
+  style.setAttribute('data-nx-spinner', '');
+  style.textContent = '@keyframes nx-spin { to { transform: rotate(360deg); } } .nx-spinner { animation: nx-spin 1s linear infinite; }';
+  document.head.appendChild(style);
+}
 // DEFAULT EXPORT
 
 export default {
