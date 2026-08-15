@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   h, div, span, p, h1, h2, h3, button, input, br, createDOM, renderToString,
-  ul, ol, li, img, form, label, select, option,
+  ul, ol, li, img, form, label, select, option, main, mainEl,
   cls, css, id, data, on, onMulti, delegate, href, ph, type, inputType, name, val,
   disabled, required, autofocus, readonly, checked, bindTo,
   row, column, center, grid, flex, full,
@@ -1160,5 +1160,28 @@ describe('HttpError', () => {
     expect(err.status).toBe(404);
     expect(err.data).toEqual({ error: 'no' });
     expect(err.message).toBe('not found');
+  });
+});
+
+// ALIASES AND STYLE EDGE CASES
+
+describe('mainEl and string styles', () => {
+  it('mainEl is an alias for main()', () => {
+    const a = createDOM(main([p('x')])) as HTMLElement;
+    const b = createDOM(mainEl([p('x')])) as HTMLElement;
+    expect(a.outerHTML).toBe(b.outerHTML);
+    expect(b.tagName).toBe('MAIN');
+  });
+
+  it('createDOM applies string styles via setAttribute', () => {
+    const node = createDOM(div('x', { style: 'color: red; padding: 10px' }));
+    expect((node as HTMLElement).getAttribute('style')).toBe('color: red; padding: 10px');
+  });
+
+  it('createDOM applies object styles directly (no automatic px conversion)', () => {
+    // Unlike renderToString, the live createDOM does not convert numbers to
+    // px — that's the renderer's job. Pass a string for px-aware styles.
+    const node = createDOM(div('x', { style: { color: 'red' } }));
+    expect((node as HTMLElement).style.color).toBe('red');
   });
 });

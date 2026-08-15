@@ -188,6 +188,11 @@ export function nav(children?: any, attrs?: any) { return el('nav', children, at
 export function header(children?: any, attrs?: any) { return el('header', children, attrs); }
 export function footer(children?: any, attrs?: any) { return el('footer', children, attrs); }
 export function main(children?: any, attrs?: any) { return el('main', children, attrs); }
+/** Alias for `main()`. The name `main` is a common variable name, so
+ *  some prefer this clearer form:
+ *    import { mainEl } from 'nexuslite';
+ *    mainEl([...]) */
+export const mainEl = main;
 export function section(children?: any, attrs?: any) { return el('section', children, attrs); }
 export function article(children?: any, attrs?: any) { return el('article', children, attrs); }
 export function aside(children?: any, attrs?: any) { return el('aside', children, attrs); }
@@ -347,10 +352,14 @@ export function createDOM(element: any): Node {
   if (props.className) el.className = props.className;
   if (props.id) el.id = props.id;
 
-  if (props.style) {
-    Object.entries(props.style).forEach(([key, val]) => {
-      (el.style as any)[key] = val;
-    });
+  if (props.style != null) {
+    if (typeof props.style === 'string') {
+      el.setAttribute('style', props.style);
+    } else {
+      Object.entries(props.style).forEach(([key, val]) => {
+        (el.style as any)[key] = val;
+      });
+    }
   }
 
   if (props.on) {
@@ -1149,7 +1158,7 @@ export default {
   button, input, textarea, select, option,
   ul, ol, li,
   img, video, audio,
-  nav, header, footer, main, section, article, aside,
+  nav, header, footer, main, mainEl, section, article, aside,
   form, label, fieldset, legend,
   br, hr, spacer,
 
