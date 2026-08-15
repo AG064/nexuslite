@@ -182,6 +182,75 @@ describe('prerender', () => {
     expect(out).toContain('&lt;script&gt;');
     expect(out).not.toContain('<script>alert(1)</script>');
   });
+
+  it('pretty option adds newlines between sibling block tags', async () => {
+    const html = await prerender({
+      routes: { '/': () => div([h1('A'), p('B'), h1('C')]) },
+      outDir,
+      template: TEMPLATE,
+      pretty: true,
+    });
+    const out = await readFile(join(outDir, 'index.html'), 'utf8');
+    // Should contain newlines around block tags (A, B, C each on its own line)
+    expect(out).toMatch(/<h1>A<\/h1>\s+<p>B<\/p>/);
+  });
+
+  it('throws when outDir is missing', async () => {
+    await expect(prerender({
+      routes: { '/': () => div('x') },
+      outDir: undefined as any,
+      template: TEMPLATE,
+    })).rejects.toThrow(/outDir/);
+  });
+
+  it('throws when template is missing', async () => {
+    await expect(prerender({
+      routes: { '/': () => div('x') },
+      outDir,
+      template: undefined as any,
+    })).rejects.toThrow(/template/);
+  });
+
+  it('injects the root content into a template that does not have a marker (no-marker fallback)', async () => {
+    const NO_MARKER = '<!DOCTYPE html><html><head></head><body><p>prefix</p></body></html>';
+    await prerender({
+      routes: { '/': () => div('payload') },
+      outDir,
+      template: NO_MARKER,
+    });
+    const out = await readFile(join(outDir, 'index.html'), 'utf8');
+    // No marker → payload goes before </body>
+    expect(out).toContain('<p>prefix</p><div>payload</div>');
+  });
+
+  it('uses a custom rootMarker', async () => {
+    const customTemplate = '<!DOCTYPE html><html><body>{{CONTENT}}</body></html>';
+    await prerender({
+      routes: { '/': () => div('hi') },
+      outDir,
+      template: customTemplate,
+      rootMarker: '{{CONTENT}}',
+    });
+    const out = await readFile(join(outDir, 'index.html'), 'utf8');
+    expect(out).toContain('<body><div>hi</div></body>');
+  });
+
+  it('per-route state takes precedence over initialState', async () => {
+    await prerender({
+      routes: {
+        '/': (s) => div(`global: ${s.value}`),
+        '/override': (s) => div(`override: ${s.value}`),
+      },
+      initialState: { value: 'default' },
+      routeState: { '/override': { value: 'special' } },
+      outDir,
+      template: TEMPLATE,
+    });
+    const root = await readFile(join(outDir, 'index.html'), 'utf8');
+    const override = await readFile(join(outDir, 'override/index.html'), 'utf8');
+    expect(root).toContain('global: default');
+    expect(override).toContain('override: special');
+  });
 });
 
 // Helper: re-export vi for the test
