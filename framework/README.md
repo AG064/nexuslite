@@ -3,11 +3,11 @@
 The framework source lives in this directory. The public API is exported
 from `src/nexuslite.ts` and built to `dist/`.
 
-- Main entry: `nexuslite` — `div`, `h1`, `createStore`, `createApp`,
+- Main entry: `nexuslite` - `div`, `h1`, `createStore`, `createApp`,
   `createRouter`, `createHttp`, `bindTo`, ...
-- Build-time entry: `nexuslite/prerender` — `prerender()` for static
+- Build-time entry: `nexuslite/prerender` - `prerender()` for static
   site generation
-- Source: [`src/nexuslite.ts`](src/nexuslite.ts) — one file, ~1500 lines
+- Source: [`src/nexuslite.ts`](src/nexuslite.ts) - one file, ~1500 lines
 - Tests: [`src/nexuslite.test.ts`](src/nexuslite.test.ts) and
   [`src/prerender.test.ts`](src/prerender.test.ts)
 

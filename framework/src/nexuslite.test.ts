@@ -1199,7 +1199,7 @@ describe('mainEl and string styles', () => {
 
   it('createDOM applies object styles directly (no automatic px conversion)', () => {
     // Unlike renderToString, the live createDOM does not convert numbers to
-    // px — that's the renderer's job. Pass a string for px-aware styles.
+    // px - that's the renderer's job. Pass a string for px-aware styles.
     const node = createDOM(div('x', { style: { color: 'red' } }));
     expect((node as HTMLElement).style.color).toBe('red');
   });
@@ -1236,7 +1236,7 @@ describe('mount', () => {
     const container = document.getElementById('m')!;
     store.subscribe(() => mount(div(store.getState().msg), container));
     // first render happens because we subscribed AFTER the current state
-    // — to trigger an update, call setState
+    // - to trigger an update, call setState
     expect(container.innerHTML).toBe('');  // nothing yet
     store.setState({ msg: 'two' });
     expect(container.innerHTML).toBe('<div>two</div>');

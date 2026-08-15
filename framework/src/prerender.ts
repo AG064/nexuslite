@@ -1,5 +1,5 @@
 /**
- * prerender — build-time static-site generation for NexusLite apps.
+ * prerender - build-time static-site generation for NexusLite apps.
  *
  * Run at build time (Node only) to render every route to a static HTML
  * file. Pairs with `renderToString` from the main framework to produce

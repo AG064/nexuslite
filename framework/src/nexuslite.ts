@@ -109,7 +109,7 @@ function normalizeElementArgs(contentOrAttrs?: any, attrsOrContent?: any): { con
     return { content: contentOrAttrs, attrs: mergeAttrs(attrsOrContent) };
   }
 
-  // Both args are non-attrs — treat them as sibling children, not as
+  // Both args are non-attrs - treat them as sibling children, not as
   // (content, attrs). This handles el(tag, "Label text", input({...})),
   // el(tag, span(...), a(...)), and similar composition patterns. The
   // previous behaviour treated the second non-attrs arg as attrs (and
@@ -155,7 +155,7 @@ function el(tag: string, content?: any, attrs?: any): NexusLiteElement {
   // renderToString passes through as raw HTML. The element function
   // can't know how to treat it, so we wrap it back in a child that
   // renderToString will recognise. We use the same __raw object as
-  // the only child — renderToString will see it on its own and
+  // the only child - renderToString will see it on its own and
   // emit the raw HTML.
   if ((normalizedContent as any).__raw) return h(tag, normalizedAttrs || {}, normalizedContent);
   return h(tag, normalizedAttrs || {});
@@ -239,7 +239,7 @@ export function onMulti(events: Record<string, EventHandler>) { return { on: eve
 /**
  * Attach a single event listener to `root` that fires `handler` whenever
  * the event bubbles up from an element matching `selector`. This is event
- * delegation — one listener handles many targets. Useful for dynamic lists
+ * delegation - one listener handles many targets. Useful for dynamic lists
  * (e.g. todo items) where re-attaching listeners on every render would be
  * expensive.
  *
@@ -448,7 +448,7 @@ export function createApp(config: AppConfig) {
  * if the tree was empty.
  *
  * This is the lower-level helper `createApp()` uses internally. Use it
- * directly when you don't need a store subscription — for example, in
+ * directly when you don't need a store subscription - for example, in
  * a one-shot render from a manually-managed state, or when you're
  * subscribing to a store yourself via `store.subscribe(mount)`.
  *
