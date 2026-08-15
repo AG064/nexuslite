@@ -109,7 +109,13 @@ function normalizeElementArgs(contentOrAttrs?: any, attrsOrContent?: any): { con
     return { content: contentOrAttrs, attrs: mergeAttrs(attrsOrContent) };
   }
 
-  return { content: contentOrAttrs, attrs: mergeAttrs(attrsOrContent) };
+  // Both args are non-attrs — treat them as sibling children, not as
+  // (content, attrs). This handles el(tag, "Label text", input({...})),
+  // el(tag, span(...), a(...)), and similar composition patterns. The
+  // previous behaviour treated the second non-attrs arg as attrs (and
+  // therefore dropped it via mergeAttrs), which silently lost children
+  // in cases like `label("Name", input({}))`.
+  return { content: [contentOrAttrs, attrsOrContent], attrs: {} };
 }
 
 // CORE ELEMENT SYSTEM

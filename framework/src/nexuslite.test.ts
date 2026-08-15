@@ -200,6 +200,25 @@ describe('Elements', () => {
     expect(sel.type).toBe('select');
     expect(sel.children.length).toBe(2);
   });
+
+  it('el(tag, text, childElement) keeps the child element as a sibling, not as attrs', () => {
+    // Regression: previously the second non-attrs arg was treated as attrs
+    // and dropped. So `label("Name", input({...}))` rendered as a label
+    // containing only "Name" with the input lost. Now both should be
+    // children of the label.
+    const l = label('Your name', input({ name: 'name' }));
+    expect(l.type).toBe('label');
+    expect(l.children.length).toBe(2);
+    expect(l.children[0]).toBe('Your name');
+    expect((l.children[1] as any).type).toBe('input');
+    expect((l.children[1] as any).props.name).toBe('name');
+
+    // Two sibling elements also work
+    const labelWithTwoKids = p(span('left'), span('right'));
+    expect(labelWithTwoKids.children.length).toBe(2);
+    expect((labelWithTwoKids.children[0] as any).type).toBe('span');
+    expect((labelWithTwoKids.children[1] as any).type).toBe('span');
+  });
 });
 
 // ATTRIBUTE HELPER TESTS
