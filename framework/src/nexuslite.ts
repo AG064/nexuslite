@@ -151,6 +151,13 @@ function el(tag: string, content?: any, attrs?: any): NexusLiteElement {
   if (typeof normalizedContent === 'string' || typeof normalizedContent === 'number') return h(tag, normalizedAttrs || {}, normalizedContent);
   if (Array.isArray(normalizedContent)) return h(tag, normalizedAttrs || {}, ...normalizedContent);
   if (isNexusLiteElement(normalizedContent)) return h(tag, normalizedAttrs || {}, normalizedContent);
+  // rawHtml() sentinel: a {__raw:true, html:string} object that
+  // renderToString passes through as raw HTML. The element function
+  // can't know how to treat it, so we wrap it back in a child that
+  // renderToString will recognise. We use the same __raw object as
+  // the only child — renderToString will see it on its own and
+  // emit the raw HTML.
+  if ((normalizedContent as any).__raw) return h(tag, normalizedAttrs || {}, normalizedContent);
   return h(tag, normalizedAttrs || {});
 }
 
@@ -558,6 +565,8 @@ function renderAttrs(props: Record<string, any>): string {
 export function renderToString(element: any): string {
   if (element === null || element === undefined) return '';
   if (typeof element === 'boolean') return '';
+  // rawHtml() markers pass through unchanged. The caller is trusted
+  // (it's the build-time prerender, not end-user input).
   if (typeof element === 'string') return escapeHtml(element);
   if (typeof element === 'number') return escapeHtml(String(element));
 
@@ -569,6 +578,9 @@ export function renderToString(element: any): string {
 
   if (typeof element !== 'object') return '';
 
+  // rawHtml sentinel: { __raw: true, html: '...' }
+  if ((element as any).__raw) return (element as any).html as string;
+
   const { type, props = {}, children = [] } = element;
   if (typeof type !== 'string' || !type) return '';
 
@@ -578,6 +590,14 @@ export function renderToString(element: any): string {
     return `<${type}${attrs}>`;
   }
   return `<${type}${attrs}>${inner}</${type}>`;
+}
+
+// Mark a string of HTML as raw (no escaping). Used at build time for
+// the long SVG icons that would be tedious to express element-by-
+// element. The caller is the build pipeline, not untrusted user
+// input, so the escaping bypass is intentional.
+export function rawHtml(html: string): any {
+  return { __raw: true, html };
 }
 
 // COMPONENT
