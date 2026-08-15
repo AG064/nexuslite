@@ -5,7 +5,7 @@ import {
   cls, css, id, data, on, onMulti, delegate, href, ph, type, inputType, name, val,
   disabled, required, autofocus, readonly, checked, bindTo,
   row, column, center, grid, flex, full,
-  createStore, createApp, Component, Store,
+  createStore, createApp, Component, Store, mount,
   createRouter, Router, make404Html,
   createHttp, HttpClient, HttpError,
   createDragDropContainer, draggable, dropZone,
@@ -1183,5 +1183,45 @@ describe('mainEl and string styles', () => {
     // px — that's the renderer's job. Pass a string for px-aware styles.
     const node = createDOM(div('x', { style: { color: 'red' } }));
     expect((node as HTMLElement).style.color).toBe('red');
+  });
+});
+
+// MOUNT
+
+describe('mount', () => {
+  beforeEach(() => { document.body.innerHTML = '<div id="m"></div>'; });
+
+  it('renders a tree into a container and returns the node', () => {
+    const container = document.getElementById('m')!;
+    const node = mount(div('hello', cls('greet')), container);
+    expect(container.innerHTML).toBe('<div class="greet">hello</div>');
+    expect((node as HTMLElement).tagName).toBe('DIV');
+  });
+
+  it('replaces existing content in the container', () => {
+    const container = document.getElementById('m')!;
+    container.innerHTML = '<p>old</p>';
+    mount(div('new'), container);
+    expect(container.innerHTML).toBe('<div>new</div>');
+  });
+
+  it('returns an empty DocumentFragment for an empty array', () => {
+    const container = document.getElementById('m')!;
+    const node = mount([], container);
+    expect(node).toBeInstanceOf(DocumentFragment);
+    expect(container.innerHTML).toBe('');
+  });
+
+  it('mount can be used as a store.subscribe callback', () => {
+    const store = createStore({ msg: 'one' });
+    const container = document.getElementById('m')!;
+    store.subscribe(() => mount(div(store.getState().msg), container));
+    // first render happens because we subscribed AFTER the current state
+    // — to trigger an update, call setState
+    expect(container.innerHTML).toBe('');  // nothing yet
+    store.setState({ msg: 'two' });
+    expect(container.innerHTML).toBe('<div>two</div>');
+    store.setState({ msg: 'three' });
+    expect(container.innerHTML).toBe('<div>three</div>');
   });
 });

@@ -429,6 +429,25 @@ export function createApp(config: AppConfig) {
   return store;
 }
 
+/**
+ * Render a NexusLite element tree into a DOM container. Replaces the
+ * container's existing content. Returns the mounted root node, or null
+ * if the tree was empty.
+ *
+ * This is the lower-level helper `createApp()` uses internally. Use it
+ * directly when you don't need a store subscription — for example, in
+ * a one-shot render from a manually-managed state, or when you're
+ * subscribing to a store yourself via `store.subscribe(mount)`.
+ *
+ *   const root = mount(home(), document.getElementById('app')!);
+ */
+export function mount(element: any, container: HTMLElement): Node | null {
+  container.innerHTML = '';
+  const node = createDOM(element);
+  if (node) container.appendChild(node);
+  return node;
+}
+
 // SERVER-SIDE RENDERING (string output, no DOM required)
 
 const VOID_ELEMENTS = new Set([
@@ -1258,7 +1277,7 @@ export default {
   h, createDOM, renderToString,
 
   // App & State
-  createApp, createStore, Store, Component,
+  createApp, createStore, Store, mount, Component,
 
   // Router
   createRouter, Router, make404Html,
