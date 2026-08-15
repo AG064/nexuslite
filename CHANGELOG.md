@@ -7,6 +7,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- `delegate(root, event, selector, handler)` — event delegation helper,
+  one listener handles many dynamic targets. Returns an unsubscribe function.
+- `inputType` alias for `type()` — easier to import without `as` rename
 - `bindTo(store, key, transform?)` helper for two-way input binding to a store
 - `cls(...names)` now filters falsy values, so `cls('btn', isActive && 'btn--active')` works
 - `createStore<T>()` accepts a generic type parameter for typed state
@@ -15,7 +18,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `createRouter({ mode: 'history' | 'hash' })` — History API support (hash stays default)
 - `make404Html()` — generate a GitHub-Pages-compatible SPA fallback
 - 12 `prerender()` tests, 17 `renderToString` tests, 5 typed-store tests,
-  2 `cls` tests, 3 `bindTo` tests
+  2 `cls` tests, 3 `bindTo` tests, 1 `inputType` test, 3 `delegate` tests
 
 ### Fixed
 - `isPlainObject` no longer references `Node` directly; it works in pure Node
@@ -28,6 +31,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Framework bumped to 1.1.0 (additive changes, no breaking changes)
 - `RenderFn` type now takes optional `path` argument (back-compat)
 - `prerender.ts` import paths now include `.js` extensions (Node ESM compat)
+- Repersonalized the framework: removed AG064-specific framing from
+  README, added MIT `LICENSE`, `CHANGELOG.md`, `CONTRIBUTING.md`,
+  bumped to 1.1.0 in `package.json` with proper repository metadata
+- New main `README.md` is the public face; `framework/README.md` is just
+  the API reference
 
 ## [1.0.0] — Initial release
 
