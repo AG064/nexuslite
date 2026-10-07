@@ -26,8 +26,8 @@
  */
 
 import { renderToString } from './nexuslite.js';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, join, normalize, sep } from 'node:path';
+import { lstat, mkdir, realpath, writeFile } from 'node:fs/promises';
+import { dirname, isAbsolute, join, normalize, relative, resolve, sep } from 'node:path';
 
 export type RenderFn = (state: any, path?: string) => any;
 
@@ -78,6 +78,33 @@ function pathToFile(outDir: string, routePath: string): string {
   return join(outDir, clean, 'index.html');
 }
 
+function requireContained(root: string, candidate: string): void {
+  const part = relative(root, candidate);
+  if (!part || part === '..' || part.startsWith(`..${sep}`) || isAbsolute(part)) {
+    throw new Error(`prerender: refusing to write outside outDir: ${candidate}`);
+  }
+}
+
+async function outputPath(outDir: string, candidate: string): Promise<string> {
+  const root = resolve(outDir);
+  const target = resolve(candidate);
+  requireContained(root, target);
+  const realRoot = await realpath(root);
+  let current = root;
+  for (const part of relative(root, target).split(sep)) {
+    current = join(current, part);
+    try {
+      await lstat(current);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue;
+      throw error;
+    }
+    const resolved = await realpath(current);
+    if (resolved !== realRoot || current === target) requireContained(realRoot, resolved);
+  }
+  return normalize(candidate);
+}
+
 function injectTemplate(template: string, marker: string, html: string): string {
   if (template.includes(marker)) return template.replace(marker, html);
   // No marker found: append the HTML before `</body>`, or at the end.
@@ -122,10 +149,7 @@ export async function prerender(config: PrerenderConfig): Promise<string[]> {
     if (transform) page = transform(page, routePath);
 
     const filePath = pathToFile(outDir, routePath);
-    const safe = normalize(filePath);
-    if (!safe.startsWith(normalize(outDir))) {
-      throw new Error(`prerender: refusing to write outside outDir: ${filePath}`);
-    }
+    const safe = await outputPath(outDir, filePath);
     await mkdir(dirname(safe), { recursive: true });
     await writeFile(safe, page, 'utf8');
     written.push(safe);
@@ -134,7 +158,8 @@ export async function prerender(config: PrerenderConfig): Promise<string[]> {
   // Generate 404.html using the router's make404Html() helper.
   if (notFoundPath) {
     const { make404Html } = await import('./nexuslite.js');
-    const notFoundFile = join(outDir, notFoundPath.replace(/^\/+/, ''));
+    const notFoundFile = await outputPath(outDir, join(outDir, notFoundPath.replace(/^\/+/, '')));
+    await mkdir(dirname(notFoundFile), { recursive: true });
     await writeFile(notFoundFile, make404Html(), 'utf8');
     written.push(notFoundFile);
   }

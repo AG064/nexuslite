@@ -6,6 +6,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- Keep route and custom 404 output within the output directory, including existing symlinks.
+
 ### Added
 - `delegate(root, event, selector, handler)` — event delegation helper,
   one listener handles many dynamic targets. Returns an unsubscribe function.

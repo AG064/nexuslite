@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, dirname, join, relative } from 'node:path';
 import { div, h1, p } from './nexuslite';
 import { prerender } from './prerender';
 
@@ -170,6 +170,66 @@ describe('prerender', () => {
       outDir,
       template: TEMPLATE,
     })).rejects.toThrow();
+  });
+
+  it('rejects a sibling directory sharing the output prefix', async () => {
+    await expect(prerender({
+      routes: { [`/../${basename(outDir)}-other`]: () => div('x') },
+      outDir,
+      template: TEMPLATE,
+      notFoundPath: false,
+    })).rejects.toThrow('outside outDir');
+  });
+
+  it('applies containment to the custom 404 path', async () => {
+    await expect(prerender({
+      routes: {}, outDir, template: TEMPLATE,
+      notFoundPath: `../${basename(outDir)}-other/404.html`,
+    })).rejects.toThrow('outside outDir');
+  });
+
+  it('creates a nested custom 404 with a relative output directory', async () => {
+    const files = await prerender({
+      routes: {}, outDir: relative(process.cwd(), outDir), template: TEMPLATE,
+      notFoundPath: '/errors/404.html',
+    });
+    expect(files).toEqual([join(relative(process.cwd(), outDir), 'errors', '404.html')]);
+    expect(await readFile(join(outDir, 'errors', '404.html'), 'utf8')).toContain('<html');
+  });
+
+  it('rejects an existing directory symlink that leaves the output tree', async () => {
+    const outside = await mkdtemp(join(tmpdir(), 'nexuslite-outside-'));
+    try {
+      await symlink(outside, join(outDir, 'linked'), process.platform === 'win32' ? 'junction' : 'dir');
+      await expect(prerender({
+        routes: { '/linked': () => div('x') }, outDir, template: TEMPLATE, notFoundPath: false,
+      })).rejects.toThrow('outside outDir');
+      await expect(readFile(join(outside, 'index.html'))).rejects.toThrow();
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects an output file symlink without changing its target', async ({ skip }) => {
+    if (process.platform === 'win32') return skip();
+    const outside = await mkdtemp(join(tmpdir(), 'nexuslite-outside-'));
+    try {
+      const target = join(outside, 'existing.html');
+      await writeFile(target, 'original');
+      await symlink(target, join(outDir, 'index.html'));
+      await expect(prerender({
+        routes: { '/': () => div('x') }, outDir, template: TEMPLATE, notFoundPath: false,
+      })).rejects.toThrow('outside outDir');
+      expect(await readFile(target, 'utf8')).toBe('original');
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a dangling output symlink', async ({ skip }) => {
+    if (process.platform === 'win32') return skip();
+    await symlink(join(dirname(outDir), 'missing-index.html'), join(outDir, '404.html'));
+    await expect(prerender({ routes: {}, outDir, template: TEMPLATE })).rejects.toThrow();
   });
 
   it('escapes user content in pre-rendered HTML', async () => {
