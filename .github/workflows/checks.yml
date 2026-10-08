@@ -19,6 +19,8 @@ jobs:
           cache: npm
           cache-dependency-path: framework/package-lock.json
       - run: npm ci
+      - run: npm audit --audit-level=low
       - run: npm run typecheck
       - run: npm run test:run
       - run: npm run build
+      - run: npm --prefix ../example audit --audit-level=low

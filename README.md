@@ -165,3 +165,6 @@ first to discuss what you'd like to change. See
 
 Built from scratch in TypeScript. No frameworks were used to bootstrap it
 (other than `tsc` and `vitest` for development).
+## Contributor tools
+
+Use Node.js 22.18 or later for the Vitest 4 tests and Vite 7 example builds. These are development dependencies; the library retains its Node.js 18 runtime minimum. Install dependencies from the committed lockfiles with npm ci.
